@@ -14,6 +14,7 @@ import Admin from './pages/Admin.jsx';
 import AdminStatus from './pages/AdminStatus.jsx';
 import Privacy from './pages/Privacy.jsx';
 import Terms from './pages/Terms.jsx';
+import Pricing from './pages/Pricing.jsx';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Routes>
           {/* Public marketing front door — no app chrome. */}
           <Route path="/" element={<Landing />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route element={<Layout />}>

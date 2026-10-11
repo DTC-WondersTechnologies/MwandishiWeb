@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar.jsx';
 import Topbar from './Topbar.jsx';
 import { SoonModal, FeedbackModal } from './Modal.jsx';
@@ -39,8 +39,17 @@ export default function Layout() {
           <Outlet />
           <div className="row">
             <div className="col-12">
-              <footer className="text-center py-1 mt-0 text-secondary">
-                <p className="mb-0">Copyright © 2026 Mwandishi. {t('lp.fTag')} </p>
+              <footer className="text-center py-2 mt-2 text-secondary border-top">
+                <div className="d-flex justify-content-center align-items-center gap-3 mb-1 small">
+                  <Link to="/pricing" className="text-secondary text-decoration-none">{t('nav.pricing')}</Link>
+                  <span>·</span>
+                  <Link to="/templates" className="text-secondary text-decoration-none">{t('nav.templates')}</Link>
+                  <span>·</span>
+                  <Link to="/privacy" className="text-secondary text-decoration-none">{t('lp.fPrivacy')}</Link>
+                  <span>·</span>
+                  <Link to="/terms" className="text-secondary text-decoration-none">{t('lp.fTerms')}</Link>
+                </div>
+                <p className="mb-0 small">Copyright © 2026 Mwandishi. {t('lp.fTag')} </p>
               </footer>
             </div>
           </div>

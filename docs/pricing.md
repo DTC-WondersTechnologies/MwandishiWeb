@@ -1,6 +1,6 @@
 # Pricing & monetization
 
-Status: approved for Phase 1 (execution pending) · Owner: Mwandishi team · Updated: 9 October 2026
+Status: approved for Phase 1 (active execution) · Owner: Mwandishi team · Updated: 11 October 2026
 
 Side-income model. Core stays free forever (Graduate template, basic PDF,
 a few AI drafts a day); power features are one-time M-Pesa unlocks.
@@ -12,13 +12,15 @@ the privacy story is the moat.
 | Item | Price | Type |
 |---|---|---|
 | Professional Two-Column template (clinical) | **1,500** | one-time unlock |
-| Exact Replica template (exact) | **1,500** | one-time unlock |
+| Exact ATS Replica template (exact) | **2,000** | one-time unlock |
 
-Constants: `PRICE_CLINICAL` / `PRICE_EXACT` in `frontend/src/lib/store.js`.
-Change the two numbers and the paywall UI plus backend validation follow.
-**These constants are the only place amounts live**: FAQ, Terms, paywall
-and inbox copy all say "one-time fee, price shown in the app" and never
-hardcode a figure — so a future price change touches code, not copy.
+Constants: `PRICE_CLINICAL` (1,500 TZS) / `PRICE_EXACT` (2,000 TZS) in `frontend/src/lib/store.js`.
+Backend validation in `backend/payments.py` enforces `VALID_ITEMS = {"clinical": 1500, "exact": 2000}`.
+Exact ATS Replica carries a premium 2,000 TZS price point due to its executive photo rail and two-tone layout,
+while Clinical Two-Column remains accessible at 1,500 TZS for healthcare and consulting job seekers.
+Change the numbers and the paywall UI plus backend validation follow.
+**These constants govern amount handling across the application**: FAQ, Terms, paywall
+and inbox copy describe the pricing structure while client store constants and backend validation enforce exact figures.
 Free quota that stays free: 3 AI actions/day, 3 exports per CV, all other
 templates, cover-letter writing.
 
@@ -63,7 +65,7 @@ known edge cases (manual receipt-SMS support as fallback).
 
 ## Honest limits
 
-- Local entitlement flags are clearable; at TZS 1,500 this is accepted
+- Local entitlement flags are clearable; at TZS 1,500 – 2,000 this is accepted
   friction, not a vulnerability to chase. Payment verification itself is
   server-side, so nobody can steal anyone else's purchase.
 - Payer-phone hashes are the project's first PII: privacy policy carries

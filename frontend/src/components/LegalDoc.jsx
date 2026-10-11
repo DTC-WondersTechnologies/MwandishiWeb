@@ -12,7 +12,7 @@ export default function LegalDoc({ titleKey, subKey, introKey, sections, contact
   return (
     <div className="lp legal">
       <nav className="lp-nav py-2">
-        <div className="container">
+        <div className="container-fluid px-3 px-sm-4 px-xl-5">
           <div className="d-flex align-items-center justify-content-between gap-3">
             <Link to="/" className="navbar-brand">
               <img src={logoUrl} alt="" width="26" />
@@ -93,6 +93,8 @@ export default function LegalDoc({ titleKey, subKey, introKey, sections, contact
               </div>
             </div>
             <div className="col-12 col-md-6 text-md-end">
+              <Link to="/pricing" className="legal-link">{t('nav.pricing')}</Link>
+              <span className="mx-2">·</span>
               <Link to="/privacy" className="legal-link">{t('lp.fPrivacy')}</Link>
               <span className="mx-2">·</span>
               <Link to="/terms" className="legal-link">{t('lp.fTerms')}</Link>

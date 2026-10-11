@@ -2,7 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLang } from '../context.jsx';
 import { useStore } from '../hooks.js';
-import { deleteCV, duplicateCV, fmtDate, updateCV, exportPayloadFor, shareCVWhatsApp } from '../lib/store.js';
+import { deleteCV, duplicateCV, fmtDate, updateCV, exportPayloadFor, shareCVWhatsApp, PRO_TEMPLATES, hasTemplateUnlocked } from '../lib/store.js';
+import PaywallModal from '../components/PaywallModal.jsx';
 
 function templateName(slug) {
   return { graduate: 'Graduate', government: 'Govt/NGO', banking: 'Banking', general: 'General', clinical: 'Clinical', exact: 'Exact Replica', barua: 'Barua' }[slug] || slug;
@@ -21,6 +22,7 @@ export default function Dashboard() {
   // Rendering the PDF takes several seconds, so guard against repeat taps
   // stacking up exports and downloads.
   const [sharing, setSharing] = React.useState('');
+  const [paywallTemplate, setPaywallTemplate] = React.useState(null);
   const steps = [
     { done: cvs.length > 0, text: t('idx.s1') },
     { done: letters.length > 0, text: t('idx.s2') },
@@ -28,6 +30,10 @@ export default function Dashboard() {
   ];
   const share = async (cv) => {
     if (sharing) return;
+    if (PRO_TEMPLATES.includes(cv.template) && !hasTemplateUnlocked(cv.template)) {
+      setPaywallTemplate({ slug: cv.template, name: templateName(cv.template) });
+      return;
+    }
     setSharing(cv.id);
     try {
       await shareCVWhatsApp({
@@ -147,6 +153,15 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      <PaywallModal
+        open={Boolean(paywallTemplate)}
+        template={paywallTemplate}
+        onClose={() => setPaywallTemplate(null)}
+        onUnlocked={() => {
+          setPaywallTemplate(null);
+          refresh();
+        }}
+      />
     </React.Fragment>
   );
 }

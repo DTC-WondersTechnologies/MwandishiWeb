@@ -42,16 +42,38 @@ import subprocess
 import tempfile
 import threading
 import uuid
+import sys
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from playwright.async_api import async_playwright
 
+import payments
+
 PORT = int(os.environ.get("PORT", "8000"))
-CHROME_PATH = os.environ.get("CHROME_PATH", "/usr/bin/google-chrome")
+
+
+def _detect_chrome() -> str:
+    env_c = os.environ.get("CHROME_PATH")
+    if env_c and os.path.exists(env_c):
+        return env_c
+    if sys.platform == "win32":
+        candidates = [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        ]
+        for c in candidates:
+            if os.path.exists(c):
+                return c
+    return os.environ.get("CHROME_PATH", "/usr/bin/google-chrome")
+
+
+CHROME_PATH = _detect_chrome()
 SOFFICE_BIN = os.environ.get("SOFFICE_BIN", "soffice")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
@@ -256,8 +278,18 @@ async def export_pdf(req: ExportReq):
         raise HTTPException(400, "html required")
     try:
         browser = await get_browser()
-        page = await browser.new_page()
+        context = await browser.new_context(java_script_enabled=False)
+        page = await context.new_page()
         try:
+            # Block private network and metadata endpoint SSRF attempts
+            async def _filter_route(route):
+                u = route.request.url.lower()
+                if any(x in u for x in ("169.254.", "127.0.0.1", "localhost", "10.", "192.168.", "172.16.")):
+                    await route.abort()
+                else:
+                    await route.continue_()
+
+            await page.route("**/*", _filter_route)
             # Circle-ify exact rail initials + round the rail (no-ops for
             # every other template).
             html = exact_rail_radius(exact_badge_html(req.html))
@@ -269,6 +301,7 @@ async def export_pdf(req: ExportReq):
             )
         finally:
             await page.close()
+            await context.close()
     except Exception as e:  # noqa: BLE001
         raise HTTPException(500, f"pdf failed: {str(e)[:300]}")
     return Response(
@@ -497,8 +530,9 @@ def groq_chat(messages: list, temperature: float = 0.3) -> str:
 async def ai_draft(req: DraftReq):
     import json as _json
 
-    if not GROQ_API_KEY:
-        raise HTTPException(503, "AI not configured (GROQ_API_KEY missing)")
+    has_ai = bool(GROQ_API_KEY) or bool(CF_API_TOKEN and CF_ACCOUNT_ID)
+    if not has_ai:
+        raise HTTPException(503, "AI not configured (GROQ_API_KEY or CF_API_TOKEN missing)")
     if not req.name.strip() and not req.about.strip():
         raise HTTPException(400, "name or about required")
     lang_name = "Kiswahili" if req.lang.upper() == "SW" else "English"
@@ -554,8 +588,9 @@ CHAT_SYSTEM = (
 async def ai_chat(req: ChatReq):
     import json as _json
 
-    if not GROQ_API_KEY:
-        raise HTTPException(503, "AI not configured (GROQ_API_KEY missing)")
+    has_ai = bool(GROQ_API_KEY) or bool(CF_API_TOKEN and CF_ACCOUNT_ID)
+    if not has_ai:
+        raise HTTPException(503, "AI not configured (GROQ_API_KEY or CF_API_TOKEN missing)")
     lang_name = "Kiswahili" if req.lang.upper() == "SW" else "English"
     convo = [{"role": "system", "content": CHAT_SYSTEM + f" Conversation language: {lang_name}."}]
     for m in (req.messages or [])[-12:]:
@@ -574,6 +609,71 @@ async def ai_chat(req: ChatReq):
             out[k] = ""
     out["done"] = bool(out.get("done")) and bool(out.get("name", "").strip())
     return out
+
+
+# ---- mobile money payments (Snippe Pay / M-Pesa USSD Push) ----
+class CheckoutReq(BaseModel):
+    device_id: str
+    item: str
+    phone: str
+    amount: int = 1500
+
+
+@app.post("/api/pay/checkout")
+async def pay_checkout(req: CheckoutReq):
+    try:
+        res = payments.create_checkout(
+            device_id=req.device_id,
+            item=req.item,
+            phone=req.phone,
+            amount=req.amount,
+        )
+        return res
+    except ValueError as ve:
+        raise HTTPException(400, str(ve))
+    except Exception as e:
+        raise HTTPException(502, f"payment failed: {str(e)[:200]}")
+
+
+@app.post("/api/pay/callback")
+async def pay_callback(request: Request, x_snippe_signature: str = Header("", alias="X-Snippe-Signature")):
+    body_bytes = await request.body()
+    if not payments.verify_webhook_signature(body_bytes, x_snippe_signature):
+        raise HTTPException(403, "invalid webhook signature")
+    try:
+        data = json.loads(body_bytes.decode("utf-8"))
+    except Exception:
+        raise HTTPException(400, "invalid json")
+
+    status = data.get("status")
+    meta = data.get("metadata", {})
+    device_id = meta.get("device_id")
+    item = meta.get("item")
+    phone = data.get("phone_number", "")
+    tx_id = data.get("id", data.get("reference", uuid.uuid4().hex[:12]))
+
+    if status == "paid" and device_id and item:
+        payments.record_entitlement(
+            device_id=device_id,
+            item=item,
+            phone_hash=payments.hash_phone(phone),
+            tx_id=str(tx_id),
+            mode="live",
+        )
+        return {"ok": True, "recorded": True}
+    return {"ok": True, "recorded": False, "status": status}
+
+
+@app.get("/api/pay/status")
+async def pay_status(device_id: str = Query(...), item: str = Query(...)):
+    unlocked = payments.has_entitlement(device_id, item)
+    return {"ok": True, "device_id": device_id, "item": item, "unlocked": unlocked}
+
+
+@app.get("/api/pay/entitlements")
+async def pay_entitlements(device_id: str = Query(...)):
+    items = payments.get_device_entitlements(device_id)
+    return {"ok": True, "device_id": device_id, "entitlements": items}
 
 
 if __name__ == "__main__":

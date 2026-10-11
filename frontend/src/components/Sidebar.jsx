@@ -52,6 +52,7 @@ export default function Sidebar({ collapsed, mobileShow, onNavigate, onOpenSoon,
         <li className="px-4 py-2"><small className="nav-text">Mwandishi</small></li>
         <Item to="/dashboard" icon="ti-files" labelKey="nav.mycvs" fallback="My CVs" onNavigate={onNavigate} />
         <Item to="/templates" icon="ti-layout-grid" labelKey="nav.templates" fallback="Templates" onNavigate={onNavigate} />
+        <Item to="/pricing" icon="ti-coin" labelKey="nav.pricing" fallback="Pricing" onNavigate={onNavigate} />
         <Item to="/new-cv" icon="ti-plus" labelKey="nav.newcv" fallback="New CV" onNavigate={onNavigate} />
         <Item to="/cover-letters" icon="ti-mail" labelKey="nav.letters" fallback="Cover Letters" onNavigate={onNavigate} />
         <li>

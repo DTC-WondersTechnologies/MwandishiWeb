@@ -17,10 +17,10 @@ export const TEMPLATES = [
     best: 'Any role, experienced hires', badges: ['ATS-safe', 'EN/SW', 'Free'] },
   { slug: 'clinical', name: 'Professional Two-Column', cat: 'general', mock: 'formal',
     desc: 'Teal two-column design converted from a pro layout. Best for email and hand-in; use an ATS-clean template for portals.',
-    best: 'Doctors, nurses, consultants, hand-in CVs', badges: ['2-column', 'Free'] },
+    best: 'Doctors, nurses, consultants, hand-in CVs', badges: ['2-column', 'Pro'] },
   { slug: 'exact', name: 'Exact Replica', cat: 'general', mock: 'formal',
     desc: 'Pixel-faithful pro layout: photo rail, two-tone name, fixed columns.',
-    best: 'A classic, polished two-column look', badges: ['2-column', 'Photo', 'Free'] },
+    best: 'A classic, polished two-column look', badges: ['2-column', 'Photo', 'Pro'] },
   { slug: 'barua', name: 'Application Letter (Barua ya Maombi)', cat: 'barua', kind: 'letter', mock: 'letter',
     desc: 'Swahili or English application-letter layout. Pairs with any CV for a complete application pack.',
     best: 'Barua za maombi kwa Kiswahili au Kiingereza', badges: ['Kiswahili', 'Letter', 'Free'], useLink: 'cover-letters.html#generator' },
@@ -729,9 +729,11 @@ export function updateCV(id, patch) {
 }
 
 export function normalizeTZPhone(raw) {
-  const d = String(raw || '').replace(/[^\d+]/g, '');
-  if (/^0\d{9}$/.test(d)) return `+255${d.slice(1)}`;
-  if (/^255\d{9}$/.test(d)) return `+${d}`;
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (/^2550\d{9}$/.test(digits)) return `+255${digits.slice(4)}`;
+  if (/^0\d{9}$/.test(digits)) return `+255${digits.slice(1)}`;
+  if (/^255\d{9}$/.test(digits)) return `+${digits}`;
+  if (/^[1-9]\d{8}$/.test(digits)) return `+255${digits}`;
   return raw;
 }
 
@@ -858,7 +860,7 @@ export function cvExactHTML(data) {
   const last = parts.join(' ');
   const contact = [p.phone, p.email, p.address].map((x) => String(x || '').trim()).filter(Boolean);
   const photo = p.photo
-    ? `<img src="${p.photo}" class="cv-exact-photo" alt="">`
+    ? `<img src="${esc(p.photo)}" class="cv-exact-photo" alt="">`
     : `<span class="cv-exact-initials">${esc(((first.charAt(0) || '') + (last.charAt(0) || '') || 'CV').toUpperCase())}</span>`;
   const skills = String(data.skills || '').split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
   const expList = data.experience.filter((e) => e.role || e.employer);
@@ -897,7 +899,7 @@ export function cvExactExport(data, t) {
   const contact = [p.phone, p.email, p.address].map((x) => String(x || '').trim()).filter(Boolean);
   const skills = String(data.skills || '').split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
   const photo = p.photo
-    ? `<p align="center"><img src="${p.photo}" width="110"></p>`
+    ? `<p align="center"><img src="${esc(p.photo)}" width="110"></p>`
       : `<p align="center"><font color="${t.accent}" size="6"><b>${esc(((first.charAt(0) || '') + (last.charAt(0) || '') || 'CV').toUpperCase())}</b></font></p>`;
   const secH = (txt) => `<p><font color="${t.accent}" size="3"><b>${txt}</b></font></p>`;
   const para = (txt) => `<p>${esc(txt)}</p>`;
@@ -1172,4 +1174,106 @@ export function letterPrompt({ name, jobTitle, company, manager, lang, ad, bg, k
     ad ? `Job advert (use only what is relevant): ${String(ad).slice(0, 1500)}` : '',
   ].filter(Boolean).join('\n');
   return `${shape}\n\n${facts}`;
+}
+
+// ---- mobile money payments & entitlements ----
+export const PRICE_CLINICAL = 1500;
+export const PRICE_EXACT = 2000;
+export const PRO_TEMPLATES = ['clinical', 'exact'];
+
+export function getDeviceId() {
+  try {
+    let id = localStorage.getItem('mrcv.device');
+    if (!id) {
+      id = 'dev-' + Math.random().toString(36).substring(2, 11) + '-' + Date.now().toString(36);
+      localStorage.setItem('mrcv.device', id);
+    }
+    return id;
+  } catch (e) {
+    return 'dev-local';
+  }
+}
+
+export function getLocalEntitlements() {
+  try {
+    const raw = localStorage.getItem('mrcv.entitlements');
+    return Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveLocalEntitlement(item) {
+  if (!item || typeof item !== 'string') return;
+  try {
+    const list = getLocalEntitlements();
+    if (!list.includes(item)) {
+      list.push(item);
+      localStorage.setItem('mrcv.entitlements', JSON.stringify(list));
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new Event('mrcv:entitlement-changed'));
+      }
+    }
+  } catch (e) { /* ignore */ }
+}
+
+export function hasTemplateUnlocked(slug) {
+  if (!PRO_TEMPLATES.includes(slug)) return true;
+  return getLocalEntitlements().includes(slug);
+}
+
+export async function checkServerEntitlement(slug) {
+  if (!PRO_TEMPLATES.includes(slug)) return true;
+  if (hasTemplateUnlocked(slug)) return true;
+  const base = backendBase();
+  if (!base) return false;
+  try {
+    const r = await fetch(`${base}/pay/status?device_id=${encodeURIComponent(getDeviceId())}&item=${encodeURIComponent(slug)}`);
+    if (!r.ok) return false;
+    const data = await r.json();
+    if (data && data.unlocked) {
+      saveLocalEntitlement(slug);
+      return true;
+    }
+  } catch (e) { /* ignore */ }
+  return false;
+}
+
+export async function requestCheckout({ item, phone, amount }) {
+  const dynamicAmount = amount || (item === 'exact' ? PRICE_EXACT : PRICE_CLINICAL);
+  const base = backendBase();
+  if (!base) {
+    // Offline / static hosting: unlock immediately in fallback mode
+    saveLocalEntitlement(item);
+    return { ok: true, unlocked: true, mode: 'offline' };
+  }
+  try {
+    const r = await fetch(`${base}/pay/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        device_id: getDeviceId(),
+        item,
+        phone,
+        amount: dynamicAmount,
+      }),
+    });
+    if (!r.ok) {
+      let err = '';
+      try {
+        const j = await r.json();
+        err = (j && (j.detail || j.message)) || JSON.stringify(j);
+      } catch (e) {
+        err = await r.text();
+      }
+      return { ok: false, error: err };
+    }
+    const data = await r.json();
+    if (data.unlocked) {
+      saveLocalEntitlement(item);
+    }
+    return data;
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 }
