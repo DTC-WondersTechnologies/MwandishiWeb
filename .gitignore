@@ -1,5 +1,6 @@
 # Local test downloads / scratch
 eventsHappened/
+.agents/
 
 temp-not-to-include/
 
@@ -11,9 +12,15 @@ Thumbs.db
 *.log
 /tmp/
 
-# Backend (FastAPI)
+# Python
+__pycache__/
+*.pyc
+*.pyo
 backend/.venv/
-backend/__pycache__/
-backend/*.pyc
 backend/.env
 backend/data/
+
+# Dependencies & Build Artefacts
+node_modules/
+frontend/node_modules/
+frontend/dist/

@@ -105,6 +105,7 @@ export default function Topbar({ collapsed, onToggleSidebar, onOpenMobile }) {
                     <Link to="/dashboard" onClick={() => setOpenMenu(null)}><span>{t('nav.mycvs')}</span></Link>
                     <Link to="/new-cv" onClick={() => setOpenMenu(null)}><span>{t('nav.newcv')}</span></Link>
                     <Link to="/templates" onClick={() => setOpenMenu(null)}><span>{t('nav.templates')}</span></Link>
+                    <Link to="/pricing" onClick={() => setOpenMenu(null)}><span>{t('nav.pricing')}</span></Link>
                     <Link to="/cover-letters" onClick={() => setOpenMenu(null)}><span>{t('nav.letters')}</span></Link>
                     <Link to="/account" onClick={() => setOpenMenu(null)}><span>{t('nav.myaccount')}</span></Link>
                     <a href="#" onClick={(e) => { e.preventDefault(); setOpenMenu(null); logout(); }}><span>{t('nav.logout')}</span></a>

@@ -33,8 +33,23 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent
 HTML = HERE / "poster.html"
 OUT = HERE / "out"
-CONFIG = HERE / "poster.config.json"
-CHROME_PATH = os.environ.get("CHROME_PATH", "/usr/bin/google-chrome")
+def _detect_chrome() -> str:
+    env_c = os.environ.get("CHROME_PATH")
+    if env_c and os.path.exists(env_c):
+        return env_c
+    if sys.platform == "win32":
+        for c in (
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        ):
+            if os.path.exists(c):
+                return c
+    return os.environ.get("CHROME_PATH", "/usr/bin/google-chrome")
+
+
+CHROME_PATH = _detect_chrome()
 
 WIDTH_PX, HEIGHT_PX = 1240, 1754
 SCALE = 0.64  # 1240px @96dpi = 12.9167in; * 0.64 = 8.2667in = 209.97mm

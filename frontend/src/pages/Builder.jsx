@@ -7,8 +7,10 @@ import {
   chatViaBackend, collectSheetCSS, cvThemedHTML, cvExactHTML, cvToHTML,
   normalizeTZPhone, parseLevel, withExportPatch,
   FONTS, SIZES, TPL_DEFAULTS, exportCSS, shareCVWhatsApp, SAMPLE_CV, SAMPLE_EXACT, cvDataFor,
+  PRO_TEMPLATES, hasTemplateUnlocked,
 } from '../lib/store.js';
 import Modal from '../components/Modal.jsx';
+import PaywallModal from '../components/PaywallModal.jsx';
 import AITextLoading from '../components/AITextLoading.jsx';
 import logoUrl from '../assets/images/logo-leaf.png';
 
@@ -101,6 +103,7 @@ export default function Builder({ initialMode }) {
   const [chips, setChips] = React.useState([]);
   const [chatInput, setChatInput] = React.useState('');
   const [aiStatus, setAiStatus] = React.useState(null); // { texts, step, total }
+  const [paywallOpen, setPaywallOpen] = React.useState(false);
   const chatRef = React.useRef({ step: -1, name: '', job: '', level: 'student' });
   const convoRef = React.useRef(null);
   const aiReqRef = React.useRef(0);
@@ -446,6 +449,10 @@ export default function Builder({ initialMode }) {
     return { html, css: exact ? '' : currentExportCSS() };
   };
   const doPrint = async () => {
+    if (PRO_TEMPLATES.includes(template) && !hasTemplateUnlocked(template)) {
+      setPaywallOpen(true);
+      return;
+    }
     persistRef.current();
     const name = `${(data.personal.fullName || '').trim() || 'My'}-CV`;
     const ok = await downloadFromBackend('pdf', { ...pdfPayload(), filename: name });
@@ -455,6 +462,10 @@ export default function Builder({ initialMode }) {
     thankOnce();
   };
   const doDoc = async () => {
+    if (PRO_TEMPLATES.includes(template) && !hasTemplateUnlocked(template)) {
+      setPaywallOpen(true);
+      return;
+    }
     persistRef.current();
     const base = `${(data.personal.fullName || '').trim() || 'My'}-CV`;
     const exact = template === 'exact';
@@ -481,6 +492,10 @@ export default function Builder({ initialMode }) {
      one it falls back to. */
   const doWa = async (e) => {
     e.preventDefault();
+    if (PRO_TEMPLATES.includes(template) && !hasTemplateUnlocked(template)) {
+      setPaywallOpen(true);
+      return;
+    }
     persistRef.current();
     await shareCVWhatsApp({
       cv: { data, template },
@@ -632,9 +647,24 @@ export default function Builder({ initialMode }) {
               <div className="d-flex gap-2 flex-wrap align-items-center mb-3">
                 <small className="text-secondary">{t('bld.template')}</small>
                 <div className="btn-group btn-group-sm flex-wrap" role="group">
-                  {[['graduate', 'Graduate Starter'], ['government', 'Govt / NGO'], ['banking', 'Banking'], ['general', 'General'], ['clinical', 'Two-Column'], ['exact', 'Exact Replica']].map(([v, label]) => (
-                    <button key={v} className={`btn ${template === v ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => { dirtyRef.current = true; setTemplate(v); setTheme((th) => ({ ...th, color: TPL_DEFAULTS[v] || th.color })); }}>{label}</button>
-                  ))}
+                  {[['graduate', 'Graduate Starter'], ['government', 'Govt / NGO'], ['banking', 'Banking'], ['general', 'General'], ['clinical', 'Two-Column'], ['exact', 'Exact Replica']].map(([v, label]) => {
+                    const isPro = PRO_TEMPLATES.includes(v);
+                    const isUnlocked = hasTemplateUnlocked(v);
+                    return (
+                      <button
+                        key={v}
+                        className={`btn ${template === v ? 'btn-primary' : 'btn-outline-primary'}`}
+                        onClick={() => {
+                          dirtyRef.current = true;
+                          setTemplate(v);
+                          setTheme((th) => ({ ...th, color: TPL_DEFAULTS[v] || th.color }));
+                        }}
+                      >
+                        {label}
+                        {isPro && !isUnlocked && <span className="badge bg-warning text-dark ms-1" style={{ fontSize: '0.62rem' }}>PRO</span>}
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className="flex-grow-1 d-flex align-items-center gap-2" style={{ minWidth: '160px', maxWidth: '280px' }}>
                   <div className="progress flex-grow-1" style={{ height: '8px' }}><div className="progress-bar" style={{ width: `${score}%` }}></div></div>
@@ -833,6 +863,15 @@ export default function Builder({ initialMode }) {
           </div>
         </div>
       </div>
+      <PaywallModal
+        open={paywallOpen}
+        template={{ slug: template, name: TEMPLATE_LABELS[template] || template }}
+        onClose={() => setPaywallOpen(false)}
+        onUnlocked={() => {
+          setPaywallOpen(false);
+          forceTick((x) => x + 1);
+        }}
+      />
       <Modal open={thanksOpen} onClose={() => setThanksOpen(false)} size="modal-sm">
         <div id="thanksAnim" className="mx-auto" style={{ width: '150px', height: '150px' }}></div>
         <h4 className="mb-2">{t('thanks.title')}</h4>

@@ -29,7 +29,23 @@ check('notif: complete user clear', m.buildNotifs([{ downloads: 1 }], [{ id: 1 }
 check('i18n EN', i.t('nav.mycvs') === 'My CVs');
 m.saveUser({ lang: 'SW' });
 check('i18n SW', i.t('nav.mycvs') === 'CV Zangu');
+check('pricing i18n SW', i.t('nav.pricing') === 'Bei na Vifurushi');
 m.clearUser();
+check('pricing i18n EN', i.t('nav.pricing') === 'Pricing');
+check('pro templates pricing', m.PRO_TEMPLATES.length === 2 && m.PRICE_CLINICAL === 1500 && m.PRICE_EXACT === 2000);
+check('free templates unlocked by default', m.hasTemplateUnlocked('graduate') && m.hasTemplateUnlocked('general'));
+check('pro templates locked without entitlement', !m.hasTemplateUnlocked('clinical') && !m.hasTemplateUnlocked('exact'));
+m.saveLocalEntitlement(null);
+m.saveLocalEntitlement(undefined);
+m.saveLocalEntitlement('');
+check('entitlement rejects falsy inputs', m.getLocalEntitlements().length === 0);
+m.saveLocalEntitlement('clinical');
+check('pro template unlocked after entitlement', m.hasTemplateUnlocked('clinical') && !m.hasTemplateUnlocked('exact'));
+m.saveLocalEntitlement('exact');
+check('both pro templates unlocked', m.hasTemplateUnlocked('clinical') && m.hasTemplateUnlocked('exact') && m.getLocalEntitlements().length === 2);
+m.saveLocalEntitlement('clinical');
+check('entitlements list is deduplicated', m.getLocalEntitlements().length === 2);
+localStorage.removeItem('mrcv.entitlements');
 check('crud roundtrip', (() => {
   const cv = m.createCV('graduate');
   m.updateCV(cv.id, { name: 'Test' });
@@ -37,7 +53,23 @@ check('crud roundtrip', (() => {
   m.deleteCV(cv.id);
   return ok && !m.getCV(cv.id);
 })());
-check('phone normalize', m.normalizeTZPhone('0765123456') === '+255765123456');
+check('phone normalize', m.normalizeTZPhone('0765123456') === '+255765123456'
+  && m.normalizeTZPhone('+255 765 123 456') === '+255765123456'
+  && m.normalizeTZPhone('+255-765-123-456') === '+255765123456'
+  && m.normalizeTZPhone('255 765 123 456') === '+255765123456'
+  && m.normalizeTZPhone('+255 0765 123 456') === '+255765123456'
+  && m.normalizeTZPhone('765123456') === '+255765123456'
+  && m.normalizeTZPhone('076512345') === '076512345');
+check('phone tz regex validation', /^\+255\d{9}$/.test(m.normalizeTZPhone('0765123456'))
+  && /^\+255\d{9}$/.test(m.normalizeTZPhone('+255 0765 123 456'))
+  && !/^\+255\d{9}$/.test(m.normalizeTZPhone('1234567890'))
+  && !/^\+255\d{9}$/.test(m.normalizeTZPhone('abc')));
+check('pro template badges carry Pro not Free', (() => {
+  const c = m.TEMPLATES.find((x) => x.slug === 'clinical');
+  const e = m.TEMPLATES.find((x) => x.slug === 'exact');
+  return c.badges.includes('Pro') && !c.badges.includes('Free')
+    && e.badges.includes('Pro') && !e.badges.includes('Free');
+})());
 check('level numbers', m.parseLevel('1') === 'student' && m.parseLevel('2') === 'fresher' && m.parseLevel('3') === 'experienced');
 check('level words EN/SW', m.parseLevel('Fresh graduate') === 'fresher' && m.parseLevel('mhitimu mpya') === 'fresher' && m.parseLevel('mwanafunzi') === 'student');
 check('level unknown', m.parseLevel('banana') === null && m.parseLevel('') === null);
@@ -228,6 +260,26 @@ check('generator: full address block renders sender lines and contact',
   const bad = tblKeys.filter((k) => !(k in i.STR.en) || !(k in i.STR.sw));
   check('legal page section keys resolve in both locales', bad.length === 0);
   if (bad.length) console.log('  bad:', bad.join(', '));
+
+  const pricingFaqKeys = ['pr.q1', 'pr.a1', 'pr.q2', 'pr.a2', 'pr.q3', 'pr.a3', 'pr.q4', 'pr.a4', 'pr.q5', 'pr.a5', 'pr.q6', 'pr.a6'];
+  const badPricing = pricingFaqKeys.filter((k) => !(k in i.STR.en) || !(k in i.STR.sw));
+  check('pricing FAQ keys resolve in both locales', badPricing.length === 0);
+  if (badPricing.length) console.log('  bad pricing:', badPricing.join(', '));
+
+  const pricingEssentialKeys = [
+    'pr.heroTrustPill', 'pr.heroH1Line1', 'pr.heroH1Line2', 'pr.sub',
+    'pr.freeBadge', 'pr.freeTitle', 'pr.freePrice', 'pr.freePeriod', 'pr.freeDesc', 'pr.freeCta',
+    'pr.popularRibbon', 'pr.proBadge', 'pr.feeGuaranteeBadge', 'pr.proTitle', 'pr.proPrice', 'pr.proPeriod', 'pr.proDesc',
+    'pr.proTplsTitle', 'pr.tplClinicalName', 'pr.tplExactName', 'pr.unlockedBadge', 'pr.valLifetime',
+    'pr.previewBtn', 'pr.useNowBtn', 'pr.proCta', 'pr.allUnlockedCta', 'pr.trustFeeDesc',
+    'pr.operatorsTitle', 'pr.step1Title', 'pr.step1Desc', 'pr.step2Title', 'pr.step2Desc', 'pr.step3Title', 'pr.step3Desc',
+    'pr.faqEyebrow', 'pr.faqTitle', 'pr.faqSub',
+    'pr.ctaTitle', 'pr.ctaSub', 'pr.ctaStart', 'pr.ctaExplore',
+    'pr.modalUnlocked', 'pr.modalUnlockPrompt', 'pr.modalClose', 'pr.modalUse', 'pr.modalUnlockBtn',
+  ];
+  const badEssential = pricingEssentialKeys.filter((k) => !(k in i.STR.en) || !(k in i.STR.sw));
+  check('all pricing essential keys resolve in both locales', badEssential.length === 0);
+  if (badEssential.length) console.log('  bad pricing essential:', badEssential.join(', '));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -78,37 +78,42 @@ export default function Landing() {
     <div className="lp">
       {/* ---------------------------------------------------------------- nav */}
       <nav className="lp-nav py-2">
-        <div className="container">
+        <div className="container-fluid px-3 px-sm-4 px-xl-5">
           <div className="d-flex align-items-center justify-content-between gap-3">
             <Link to="/" className="navbar-brand">
               <img src={logoUrl} alt="" width="26" />
               <span>{t('lp.fTitle')}</span>
             </Link>
-            <div className="d-none d-lg-flex align-items-center gap-1">
+            <div className="d-none d-lg-flex align-items-center gap-2 gap-xl-3">
               <a className="nav-link" href="#can">{t('lp.navCan')}</a>
               <a className="nav-link" href="#features">{t('lp.features')}</a>
               <a className="nav-link" href="#how">{t('lp.how')}</a>
               <a className="nav-link" href="#templates">{t('lp.tpl')}</a>
+              <Link className="nav-link" to="/pricing">{t('nav.pricing')}</Link>
               <a className="nav-link" href="#faq">{t('lp.faq')}</a>
             </div>
             <div className="d-flex align-items-center gap-2">
-              <div className="btn-group btn-group-sm" role="group">
-                {['EN', 'SW'].map((code) => (
-                  <button
-                    key={code}
-                    type="button"
-                    onClick={() => setLang(code)}
-                    className={`btn lp-lang ${lang.toUpperCase() === code ? 'btn-primary' : 'btn-outline-secondary'}`}
-                  >
-                    {code}
-                  </button>
-                ))}
+              <div className="btn-group btn-group-sm" role="group" aria-label="Language switcher">
+                {['EN', 'SW'].map((code) => {
+                  const active = lang.toUpperCase() === code;
+                  return (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => setLang(code)}
+                      aria-pressed={active}
+                      className={`btn lp-lang ${active ? 'btn-primary' : 'btn-outline-secondary'}`}
+                    >
+                      {code}
+                    </button>
+                  );
+                })}
               </div>
               <button
                 type="button"
                 className="btn btn-sm btn-ghost-secondary"
                 onClick={toggle}
-                title={t('nav.account')}
+                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 aria-label="Toggle theme"
               >
                 <i className={`ti ${theme === 'dark' ? 'ti-sun' : 'ti-moon'}`}></i>
@@ -390,6 +395,8 @@ export default function Landing() {
               </div>
             </div>
             <div className="col-12 col-md-6 text-md-end">
+              <Link to="/pricing" className="legal-link">{t('nav.pricing')}</Link>
+              <span className="mx-2">·</span>
               <Link to="/privacy" className="legal-link">{t('lp.fPrivacy')}</Link>
               <span className="mx-2">·</span>
               <Link to="/terms" className="legal-link">{t('lp.fTerms')}</Link>
