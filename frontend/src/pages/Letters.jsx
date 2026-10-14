@@ -535,7 +535,7 @@ const cvMap = React.useMemo(() => Object.fromEntries(cvs.map((c) => [c.id, c.nam
             <div className="card-header bg-white px-4 py-3"><h4 className="mb-0 h6"><span className="badge bg-primary me-2">1</span><span>{t('bld.export')}</span></h4></div>
             <div className="card-body p-3 d-flex gap-2 flex-wrap">
               <button className="btn btn-primary" type="button" onClick={doPrint}><i className="ti ti-printer"></i> <span>{t('bld.pdf')}</span></button>
-              <button className="btn btn-outline-secondary" type="button" onClick={dl}><i className="ti ti-download"></i> .doc</button>
+              <button className="btn btn-outline-secondary" type="button" onClick={dl}><i className="ti ti-file-type-docx"></i> .docx</button>
               <button className="btn btn-outline-success" type="button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(body)}`, '_blank', 'noopener')}><i className="ti ti-brand-whatsapp"></i> WhatsApp</button>
               <div className="form-text w-100">{t('bld.pdfNote')}</div>
             </div>

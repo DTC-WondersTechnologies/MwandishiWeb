@@ -456,11 +456,13 @@ export default function Builder({ initialMode }) {
     }
     persistRef.current();
     const name = `${(data.personal.fullName || '').trim() || 'My'}-CV`;
-    const ok = await downloadFromBackend('pdf', { ...pdfPayload(), filename: name });
-    const id = cvIdRef.current;
-    if (id) { const cv = getCV(id); if (cv) updateCV(id, { downloads: (cv.downloads || 0) + 1 }); }
-    if (!ok) window.print();
-    thankOnce();
+    await runDownload('pdf', name, async () => {
+      const ok = await downloadFromBackend('pdf', { ...pdfPayload(), filename: name });
+      const id = cvIdRef.current;
+      if (id) { const cv = getCV(id); if (cv) updateCV(id, { downloads: (cv.downloads || 0) + 1 }); }
+      if (!ok) { window.print(); return t('thanks.printNote'); }
+      return '';
+    });
   };
   const doDoc = async () => {
     if (PRO_TEMPLATES.includes(template) && !hasTemplateUnlocked(template)) {
@@ -475,13 +477,17 @@ export default function Builder({ initialMode }) {
     // through LibreOffice silently drops. The ATS "exact" template is left on
     // the legacy path because it is already table-based, which is the one thing
     // LibreOffice converts faithfully.
-    const ok = await downloadFromBackend('docx', {
-      data: exact ? null : data, theme, template,
-      html: currentExportHTML(true), css: exact ? '' : currentExportCSS(),
-      filename: `${base}.doc`,
+    await runDownload('doc', `${base}.docx`, async () => {
+      const ok = await downloadFromBackend('docx', {
+        data: exact ? null : data, theme, template,
+        html: currentExportHTML(true), css: exact ? '' : currentExportCSS(),
+        filename: `${base}.docx`,
+      });
+      // Offline fallback below saves Word-compatible HTML, which must keep
+      // the .doc extension to open; show its real name in that case.
+      if (!ok) { downloadStyledDoc(`${base}.doc`, currentExportHTML(true), exact ? '' : currentExportCSS()); setDlName(`${base}.doc`); }
+      return '';
     });
-    if (!ok) downloadStyledDoc(`${base}.doc`, currentExportHTML(true), exact ? '' : currentExportCSS());
-    thankOnce();
   };
   const bumpDownloads = () => {
     const id = cvIdRef.current;
@@ -505,6 +511,36 @@ export default function Builder({ initialMode }) {
     });
   };
   const [thanksOpen, setThanksOpen] = React.useState(false);
+  // Download dialog: opens the moment PDF/.doc is pressed, shows progress
+  // while the backend renders, and flips to done only when the file is
+  // actually saved (or the fallback ran). Every download, not once.
+  const [dlOpen, setDlOpen] = React.useState(false);
+  const [dlPhase, setDlPhase] = React.useState('working'); // 'working' | 'done'
+  const [dlKind, setDlKind] = React.useState('pdf');
+  const [dlName, setDlName] = React.useState('');
+  const [dlNote, setDlNote] = React.useState('');
+  const dlBusyRef = React.useRef(false);
+  const dlClosedRef = React.useRef(false);
+  const runDownload = async (kind, filename, fn) => {
+    if (dlBusyRef.current) return;
+    dlBusyRef.current = true;
+    dlClosedRef.current = false;
+    setDlKind(kind);
+    setDlName(filename);
+    setDlNote('');
+    setDlPhase('working');
+    setDlOpen(true);
+    try {
+      const note = await fn();
+      if (!dlClosedRef.current) {
+        setDlNote(note || '');
+        setDlPhase('done');
+      }
+    } finally {
+      dlBusyRef.current = false;
+    }
+  };
+  const closeDl = () => { dlClosedRef.current = true; setDlOpen(false); };
   const lottieRef = React.useRef(null);
   React.useEffect(() => {
     if (!thanksOpen) return undefined;
@@ -873,8 +909,8 @@ export default function Builder({ initialMode }) {
             <div className="card mb-3">
               <div className="card-header bg-white px-4 py-3"><h4 className="mb-0 h6"><span className="badge bg-primary me-2">7</span><span>{t('bld.export')}</span></h4></div>
               <div className="card-body p-3 d-flex gap-2 flex-wrap">
-                <button className="btn btn-primary" type="button" onClick={doPrint}><i className="ti ti-printer"></i> <span>{t('bld.pdf')}</span></button>
-                <button className="btn btn-outline-secondary" type="button" onClick={doDoc}><i className="ti ti-download"></i> .doc</button>
+                  <button className="btn btn-primary" type="button" onClick={doPrint}><i className="ti ti-file-type-pdf"></i> <span>{t('bld.pdf')}</span></button>
+                  <button className="btn btn-outline-secondary" type="button" onClick={doDoc}><i className="ti ti-file-type-docx"></i> .docx</button>
                 <button className="btn btn-outline-success" type="button" onClick={doWa}><i className="ti ti-brand-whatsapp"></i> WhatsApp</button>
                 <div className="form-text w-100">{t('bld.pdfNote')}</div>
               </div>
@@ -905,6 +941,23 @@ export default function Builder({ initialMode }) {
         <h4 className="mb-2">{t('thanks.title')}</h4>
         <p className="text-secondary mb-4">{t('thanks.body')}</p>
         <button type="button" className="btn btn-primary btn-lg w-100" onClick={() => setThanksOpen(false)}>{t('thanks.close')}</button>
+      </Modal>
+      <Modal open={dlOpen} onClose={closeDl} title={dlPhase === 'done' ? t('thanks.done') : t('thanks.working')}>
+        {dlPhase === 'working' ? (
+          <div className="py-3">
+            <span className="spinner-border mb-3" role="status" aria-hidden="true"></span>
+            <p className="text-secondary mb-0">{dlKind === 'pdf' ? t('thanks.workingPdf') : t('thanks.workingDoc')}</p>
+          </div>
+        ) : (
+          <React.Fragment>
+            <div className="icon-shape icon-lg bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-3">
+              <i className="ti ti-check fs-2"></i>
+            </div>
+            <p className="mb-1"><span className="fw-semibold">{dlName}</span></p>
+            {dlNote ? <p className="text-secondary small mb-3">{dlNote}</p> : <div className="mb-3" />}
+            <button type="button" className="btn btn-primary w-100" onClick={closeDl}>{t('thanks.close')}</button>
+          </React.Fragment>
+        )}
       </Modal>
     </React.Fragment>
   );
