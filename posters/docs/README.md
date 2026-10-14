@@ -122,7 +122,7 @@ out falls back to the default.
   "layout": { "padX": 104, "logoW": 214, "barH": 12 },
   "text": {
     "en": {
-      "l1": "Write anything with",
+      "l1": "Your CV, written with",
       "brand": "Mwandishi AI",
       "feats": ["Your CV and cover letter, written together"],
       "strip": "CV • Cover letter • PDF • DOCX • EN / SW"
@@ -263,5 +263,6 @@ language you set through the editor.
 * **Bleed.** The layout is built with margins (default 104 px ≈ 17.6 mm) and the
   orange bar bleeds off the bottom edge. If the shop asks for a full-bleed
   poster, raise `padTop`/`padX` a little or ask them to scale to fit.
-* The tagline *"Write anything with Mwandishi AI"* is broad for a CV/cover-letter
-  tool. It's your call, but worth a second look before a large print run.
+* The tagline *"Your CV, written with Mwandishi AI"* is deliberately specific to
+  the core product (CV + cover letter). Revisit it only if the poster ever
+  promotes broader services.

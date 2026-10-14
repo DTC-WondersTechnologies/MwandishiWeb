@@ -33,6 +33,7 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent
 HTML = HERE / "poster.html"
 OUT = HERE / "out"
+CONFIG = HERE / "poster.config.json"
 def _detect_chrome() -> str:
     env_c = os.environ.get("CHROME_PATH")
     if env_c and os.path.exists(env_c):
