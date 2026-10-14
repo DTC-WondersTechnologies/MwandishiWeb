@@ -5,8 +5,9 @@ import {
   blankData, createCV, getCV, updateCV, TEMPLATE_LABELS, COUNTRIES, esc,
   downloadStyledDoc, downloadFromBackend, draftViaBackend,
   chatViaBackend, collectSheetCSS, cvThemedHTML, cvExactHTML, cvToHTML,
+  cvTraditionalHTML, cvBiodataHTML,
   normalizeTZPhone, parseLevel, withExportPatch,
-  FONTS, SIZES, TPL_DEFAULTS, exportCSS, shareCVWhatsApp, SAMPLE_CV, SAMPLE_EXACT, cvDataFor,
+  FONTS, SIZES, TPL_DEFAULTS, exportCSS, shareCVWhatsApp, SAMPLE_CV, SAMPLE_EXACT, SAMPLE_TRADITIONAL, SAMPLE_BIODATA, cvDataFor,
   PRO_TEMPLATES, hasTemplateUnlocked,
 } from '../lib/store.js';
 import Modal from '../components/Modal.jsx';
@@ -141,7 +142,7 @@ export default function Builder({ initialMode }) {
       // not an empty form. Merged over blankData so the shape stays complete
       // (photo, arrays) even where a sample is sparse — edits never mutate the
       // module constants.
-      setData(cvDataFor({ data: tpl === 'exact' ? SAMPLE_EXACT : SAMPLE_CV }));
+      setData(cvDataFor({ data: tpl === 'exact' ? SAMPLE_EXACT : (tpl === 'traditional' ? SAMPLE_TRADITIONAL : (tpl === 'biodata' ? SAMPLE_BIODATA : SAMPLE_CV)) }));
     }
     let m = initialMode || params.get('mode') || null;
     try { m = m || localStorage.getItem('mrcv.cvMode') || null; } catch (e) { /* ignore */ }
@@ -394,10 +395,10 @@ export default function Builder({ initialMode }) {
     }
   });
   const blanksFor = {
-    education: { school: '', qualification: '', start: '', end: '' },
+    education: { school: '', qualification: '', start: '', end: '', major: '', gpa: '', awarded: '' },
     experience: { employer: '', role: '', start: '', end: '', bullets: '' },
     projects: { name: '', desc: '' },
-    referees: { name: '', title: '', phone: '' },
+    referees: { name: '', title: '', phone: '', org: '', address: '', email: '' },
   };
   const normPhone = (v) => { if ((v || '').trim()) setPath('personal.phone', normalizeTZPhone(v)); };
   const fillProfile = () => {
@@ -544,8 +545,18 @@ export default function Builder({ initialMode }) {
   };
   const previewHTML = React.useMemo(() => {
     if (template === 'exact') return cvExactHTML(data);
+    if (template === 'traditional' || template === 'biodata') {
+      // Same themed renderers the export uses, so the live sheet matches the
+      // file (the generic cvToHTML path below knows nothing of biodata).
+      const th = {
+        accent: theme.color,
+        font: FONTS[theme.font] || FONTS.poppins,
+        size: SIZES[theme.size] || SIZES.m,
+      };
+      return template === 'traditional' ? cvTraditionalHTML(data, th) : cvBiodataHTML(data, th);
+    }
     return cvToHTML(data, aiReveal);
-  }, [data, template, aiReveal]);
+  }, [data, template, aiReveal, theme]);
   const aiMode = entryMode === 'ai';
   const aiColCls = !aiMode ? 'col-12 d-none no-print' : (aiPreviewOpen ? 'col-12 col-lg-5 no-print' : 'col-12 no-print');
   const builderCls = !aiMode ? 'col-12 col-lg-6 no-print' : (aiShowForm ? 'col-12 no-print' : 'd-none');
@@ -775,7 +786,12 @@ export default function Builder({ initialMode }) {
                   <div className="col-12"><label className="form-label" htmlFor="f-title">{t('fld.title')}</label><input id="f-title" className="form-control" value={data.personal.title} onChange={(e) => setPath('personal.title', e.target.value)} placeholder="e.g. Primary School Teacher" /></div>
                   <div className="col-md-6"><label className="form-label" htmlFor="f-phone">{t('fld.phone')}</label><input id="f-phone" className="form-control" value={data.personal.phone} onChange={(e) => setPath('personal.phone', e.target.value)} onBlur={(e) => { if (e.target.value.trim()) setPath('personal.phone', normalizeTZPhone(e.target.value)); }} inputMode="tel" placeholder="0765 123 456" /><div className="form-text">{t('bld.phoneHint')}</div></div>
                   <div className="col-md-6"><label className="form-label" htmlFor="f-email">{t('fld.email')}</label><input id="f-email" className="form-control" value={data.personal.email} onChange={(e) => setPath('personal.email', e.target.value)} inputMode="email" placeholder="you@example.com" /></div>
-                  <div className="col-12"><label className="form-label" htmlFor="f-address">{t('fld.address')}</label><input id="f-address" className="form-control" value={data.personal.address} onChange={(e) => setPath('personal.address', e.target.value)} placeholder="e.g. Ubungo, Dar es Salaam" /></div>
+                    <div className="col-12"><label className="form-label" htmlFor="f-address">{t('fld.address')}</label><input id="f-address" className="form-control" value={data.personal.address} onChange={(e) => setPath('personal.address', e.target.value)} placeholder="e.g. Ubungo, Dar es Salaam" /></div>
+                    <div className="col-md-6"><label className="form-label" htmlFor="f-dob">{t('fld.dob')}</label><input id="f-dob" className="form-control" value={data.personal.dob} onChange={(e) => setPath('personal.dob', e.target.value)} placeholder="e.g. 12/03/2001" /></div>
+                    <div className="col-md-6"><label className="form-label" htmlFor="f-pob">{t('fld.pob')}</label><input id="f-pob" className="form-control" value={data.personal.pob} onChange={(e) => setPath('personal.pob', e.target.value)} placeholder="e.g. Dar es Salaam" /></div>
+                    <div className="col-md-4"><label className="form-label" htmlFor="f-sex">{t('fld.sex')}</label><input id="f-sex" className="form-control" value={data.personal.sex} onChange={(e) => setPath('personal.sex', e.target.value)} placeholder="e.g. Female" /></div>
+                    <div className="col-md-4"><label className="form-label" htmlFor="f-nationality">{t('fld.nationality')}</label><input id="f-nationality" className="form-control" value={data.personal.nationality} onChange={(e) => setPath('personal.nationality', e.target.value)} placeholder="e.g. Tanzanian" /></div>
+                    <div className="col-md-4"><label className="form-label" htmlFor="f-languages">{t('fld.languages')}</label><input id="f-languages" className="form-control" value={data.personal.languages} onChange={(e) => setPath('personal.languages', e.target.value)} placeholder="e.g. Kiswahili & English" /></div>
                   <div className="col-12"><label className="form-label" htmlFor="f-summary">{t('fld.summary')}</label><textarea id="f-summary" className="form-control" rows="3" value={data.personal.summary} onChange={(e) => setPath('personal.summary', e.target.value)} placeholder="2–3 lines: who you are, experience, what you offer"></textarea></div>
                 </div>
               </div>
@@ -787,8 +803,11 @@ export default function Builder({ initialMode }) {
                     <div className="row g-2">
                       <div className="col-12"><input className="form-control form-control-sm" value={e.school} onChange={(ev) => setRow('education', i, 'school', ev.target.value)} placeholder="School / university" /></div>
                       <div className="col-12"><input className="form-control form-control-sm" value={e.qualification} onChange={(ev) => setRow('education', i, 'qualification', ev.target.value)} placeholder="Qualification, e.g. Diploma in Teaching" /></div>
-                      <div className="col-6"><input className="form-control form-control-sm" value={e.start} onChange={(ev) => setRow('education', i, 'start', ev.target.value)} placeholder="Start (e.g. 2019)" /></div>
-                      <div className="col-6"><input className="form-control form-control-sm" value={e.end} onChange={(ev) => setRow('education', i, 'end', ev.target.value)} placeholder="End (e.g. 2021)" /></div>
+                        <div className="col-6"><input className="form-control form-control-sm" value={e.start} onChange={(ev) => setRow('education', i, 'start', ev.target.value)} placeholder="Start (e.g. 2019)" /></div>
+                        <div className="col-6"><input className="form-control form-control-sm" value={e.end} onChange={(ev) => setRow('education', i, 'end', ev.target.value)} placeholder="End (e.g. 2021)" /></div>
+                        <div className="col-12"><input className="form-control form-control-sm" value={e.major} onChange={(ev) => setRow('education', i, 'major', ev.target.value)} placeholder="Major, e.g. Business Administration" /></div>
+                        <div className="col-6"><input className="form-control form-control-sm" value={e.gpa} onChange={(ev) => setRow('education', i, 'gpa', ev.target.value)} placeholder="GPA, e.g. 4.1" /></div>
+                        <div className="col-6"><input className="form-control form-control-sm" value={e.awarded} onChange={(ev) => setRow('education', i, 'awarded', ev.target.value)} placeholder="Awarded, e.g. November 2023" /></div>
                     </div>
                     <button className="btn btn-sm btn-link link-danger p-0 mt-1" type="button" onClick={() => delRow('education', i)}>{t('bld.remove')}</button>
                   </div>
@@ -814,7 +833,13 @@ export default function Builder({ initialMode }) {
             <div className="card mb-3">
               <div className="card-header bg-white px-4 py-3"><h4 className="mb-0 h6"><span className="badge bg-primary me-2">4</span><span>{t('bld.skills')}</span></h4></div>
               <div className="card-body p-3">
-                <textarea className="form-control" rows="2" value={data.skills} onChange={(e) => setPath('skills', e.target.value)} placeholder="One per line or comma separated: e.g. Classroom management, Kiswahili, First aid"></textarea>
+                  <textarea className="form-control" rows="2" value={data.skills} onChange={(e) => setPath('skills', e.target.value)} placeholder="One per line or comma separated: e.g. Classroom management, Kiswahili, First aid"></textarea>
+                  <label className="form-label mt-3" htmlFor="f-comptech">{t('fld.compTech')}</label>
+                  <textarea id="f-comptech" className="form-control" rows="2" value={data.competencesTech} onChange={(e) => setPath('competencesTech', e.target.value)} placeholder="Technical competence, one per line"></textarea>
+                  <label className="form-label mt-3" htmlFor="f-compbeh">{t('fld.compBeh')}</label>
+                  <textarea id="f-compbeh" className="form-control" rows="2" value={data.competencesBehavior} onChange={(e) => setPath('competencesBehavior', e.target.value)} placeholder="Behavioral competence, one per line"></textarea>
+                  <label className="form-label mt-3" htmlFor="f-strengths">{t('fld.strengths')}</label>
+                  <textarea id="f-strengths" className="form-control" rows="2" value={data.strengths} onChange={(e) => setPath('strengths', e.target.value)} placeholder="Professional strengths, one per line"></textarea>
               </div>
             </div>
             <SectionCard n="5" title={t('bld.projects')} addLabel={t('bld.add')} onAdd={() => addRow('projects', { ...blanksFor.projects })}>
@@ -835,7 +860,10 @@ export default function Builder({ initialMode }) {
                     <div className="row g-2">
                       <div className="col-12"><input className="form-control form-control-sm" value={r.name} onChange={(ev) => setRow('referees', i, 'name', ev.target.value)} placeholder="Full name" /></div>
                       <div className="col-md-6"><input className="form-control form-control-sm" value={r.title} onChange={(ev) => setRow('referees', i, 'title', ev.target.value)} placeholder="Title, e.g. Head Teacher" /></div>
-                      <div className="col-md-6"><input className="form-control form-control-sm" value={r.phone} onChange={(ev) => setRow('referees', i, 'phone', ev.target.value)} onBlur={(ev) => { if (ev.target.value.trim()) setRow('referees', i, 'phone', normalizeTZPhone(ev.target.value)); }} inputMode="tel" placeholder="Phone, e.g. 0765…" /></div>
+                        <div className="col-md-6"><input className="form-control form-control-sm" value={r.phone} onChange={(ev) => setRow('referees', i, 'phone', ev.target.value)} onBlur={(ev) => { if (ev.target.value.trim()) setRow('referees', i, 'phone', normalizeTZPhone(ev.target.value)); }} inputMode="tel" placeholder="Phone, e.g. 0765…" /></div>
+                        <div className="col-md-6"><input className="form-control form-control-sm" value={r.org} onChange={(ev) => setRow('referees', i, 'org', ev.target.value)} placeholder="Organisation" /></div>
+                        <div className="col-md-6"><input className="form-control form-control-sm" value={r.address} onChange={(ev) => setRow('referees', i, 'address', ev.target.value)} placeholder="Address" /></div>
+                        <div className="col-md-6"><input className="form-control form-control-sm" value={r.email} onChange={(ev) => setRow('referees', i, 'email', ev.target.value)} inputMode="email" placeholder="Email" /></div>
                     </div>
                     <button className="btn btn-sm btn-link link-danger p-0 mt-1" type="button" onClick={() => delRow('referees', i)}>{t('bld.remove')}</button>
                   </div>

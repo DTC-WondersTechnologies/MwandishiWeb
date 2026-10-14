@@ -20,8 +20,16 @@ const check = (name, cond) => {
 const m = await import('../src/lib/store.js');
 const i = await import('../src/lib/i18n.js');
 
-check('7 templates', m.TEMPLATES.length === 7);
+check('9 templates', m.TEMPLATES.length === 9);
 check('sample renders', m.cvToHTML(m.SAMPLE_CV).includes('Amina Juma'));
+check('traditional renders biodata + declaration',
+  m.cvThemedHTML(m.SAMPLE_TRADITIONAL, { color: '#171717' }, 'traditional', {}).includes('Personal Profile')
+  && m.cvThemedHTML(m.SAMPLE_TRADITIONAL, { color: '#171717' }, 'traditional', {}).includes('Declaration'));
+check('biodata renders table + declaration',
+  m.cvThemedHTML(m.SAMPLE_BIODATA, { color: '#244655' }, 'biodata', {}).includes('ACADEMIC PROFILE')
+  && m.cvThemedHTML(m.SAMPLE_BIODATA, { color: '#244655' }, 'biodata', {}).includes('DECLARATION'));
+check('new templates free (not pro)', !m.PRO_TEMPLATES.includes('traditional') && !m.PRO_TEMPLATES.includes('biodata')
+  && m.hasTemplateUnlocked('traditional') && m.hasTemplateUnlocked('biodata'));
 check('exact two-tone', m.cvExactHTML(m.SAMPLE_EXACT).includes('<span class="last">Carter</span>'));
 check('letter renders', m.letterToHTML(m.SAMPLE_LETTER).includes('Wako katika ujenzi wa Taifa'));
 check('notif: fresh user nudged', m.buildNotifs([], [], {}, (k) => k).length === 2);

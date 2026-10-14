@@ -12,6 +12,7 @@ const FILTERS = [
   ['government', 'tpl.government', 'Government / NGO'],
   ['banking', 'tpl.banking', 'Banking / Telecom'],
   ['general', 'tpl.general', 'General'],
+  ['traditional', 'tpl.traditional', 'Traditional'],
   ['barua', 'tpl.letter', 'Application Letter'],
 ];
 

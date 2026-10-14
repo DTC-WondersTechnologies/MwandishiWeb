@@ -50,18 +50,9 @@ export default function Sidebar({ collapsed, mobileShow, onNavigate, onOpenSoon,
       </div>
       <ul className="nav flex-column">
         <li className="px-4 py-2"><small className="nav-text">Mwandishi</small></li>
-        <Item to="/dashboard" icon="ti-files" labelKey="nav.mycvs" fallback="My CVs" onNavigate={onNavigate} />
+        <Item to="/dashboard" icon="ti-layout-dashboard" labelKey="nav.dashboard" fallback="Dashboard" onNavigate={onNavigate} />
         <Item to="/templates" icon="ti-layout-grid" labelKey="nav.templates" fallback="Templates" onNavigate={onNavigate} />
         <Item to="/pricing" icon="ti-coin" labelKey="nav.pricing" fallback="Pricing" onNavigate={onNavigate} />
-        <Item to="/new-cv" icon="ti-plus" labelKey="nav.newcv" fallback="New CV" onNavigate={onNavigate} />
-        <Item to="/cover-letters" icon="ti-mail" labelKey="nav.letters" fallback="Cover Letters" onNavigate={onNavigate} />
-        <li>
-          <a className="nav-link" href="#" onClick={(e) => { e.preventDefault(); onOpenSoon(); }}>
-            <i className="ti ti-upload"></i>
-            <span className="nav-text">{t('nav.upload')}</span>
-            <span className="badge bg-light text-secondary border ms-auto nav-text">{t('nav.soon')}</span>
-          </a>
-        </li>
         <li className="px-4 pt-4 pb-2"><small className="nav-text">{t('nav.account')}</small></li>
         <Item to="/account" icon="ti-user-circle" labelKey="nav.myaccount" fallback="My Account" onNavigate={onNavigate} />
         <li className="mt-2 pt-2 border-top">

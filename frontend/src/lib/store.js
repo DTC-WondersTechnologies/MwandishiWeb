@@ -24,7 +24,13 @@ export const TEMPLATES = [
   { slug: 'barua', name: 'Application Letter (Barua ya Maombi)', cat: 'barua', kind: 'letter', mock: 'letter',
     desc: 'Swahili or English application-letter layout. Pairs with any CV for a complete application pack.',
     best: 'Barua za maombi kwa Kiswahili au Kiingereza', badges: ['Kiswahili', 'Letter', 'Free'], useLink: 'cover-letters.html#generator' },
-];
+  { slug: 'traditional', name: 'Traditional Formal', cat: 'traditional', mock: 'formal',
+    desc: 'Classic Tanzanian formal CV: centered header, biodata profile, stacked academic qualifications, numbered referees and declaration.',
+    best: 'Government, NGOs, formal applications', badges: ['ATS-safe', 'Biodata', 'Free'] },
+  { slug: 'biodata', name: 'Biodata Formal', cat: 'traditional', mock: 'formal',
+    desc: 'Biodata-first layout with competences, academic record table and declaration. The classic CURRICULUM VITAE recruiters expect.',
+    best: 'Formal applications, Ajira portal', badges: ['ATS-safe', 'Biodata', 'Free'] },
+  ];
 
 function seedLetterEN(cvName, jobTitle, company) {
   return `${fmtDate(new Date())}\nThe Hiring Manager\n${company}\nDar es Salaam, Tanzania\n\nDear Sir/Madam,\n\nRE: APPLICATION FOR THE POSITION OF ${jobTitle.toUpperCase()}\n\nI, ${cvName}, wish to apply for the above position as advertised. My CV, attached herewith, outlines my education, skills and experience relevant to this role.\n\nI am hardworking, quick to learn and ready to contribute to ${company}. I would welcome the opportunity to discuss my application at an interview.\n\nYours faithfully,\n${cvName}\nAttachments: CV`;
@@ -541,7 +547,7 @@ export const EXPORT_PATCH = `
 // ---- shared export theme constants ----
 // These live here, not in the pages, so the Builder and the Dashboard cannot
 // drift apart and start rendering the same CV differently.
-export const TPL_DEFAULTS = { graduate: '#008000', government: '#00C951', banking: '#008000', general: '#008000', clinical: '#244655', exact: '#244655' };
+export const TPL_DEFAULTS = { graduate: '#008000', government: '#00C951', banking: '#008000', general: '#008000', clinical: '#244655', exact: '#244655', traditional: '#171717', biodata: '#244655' };
 export const FONTS = { poppins: "'Poppins',sans-serif", georgia: "Georgia,Gelasio,'Times New Roman',serif", arial: "Arial,'Liberation Sans',Helvetica,sans-serif" };
 export const SIZES = { s: '12px', m: '13px', l: '14.5px' };
 
@@ -595,6 +601,9 @@ export function cvDataFor(cv) {
     projects: arr(d.projects, b.projects),
     referees: arr(d.referees, b.referees),
     skills: d.skills || '',
+    competencesTech: d.competencesTech || '',
+    competencesBehavior: d.competencesBehavior || '',
+    strengths: d.strengths || '',
   };
 }
 
@@ -697,16 +706,20 @@ export function downloadStyledDoc(filename, sheetHTML, cssText) {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
-export const TEMPLATE_LABELS = { graduate: 'Graduate', government: 'Govt/NGO', banking: 'Banking', general: 'General', clinical: 'Clinical', exact: 'Exact', barua: 'Barua' };
+export const TEMPLATE_LABELS = { graduate: 'Graduate', government: 'Govt/NGO', banking: 'Banking', general: 'General', clinical: 'Clinical', exact: 'Exact', traditional: 'Traditional', biodata: 'Biodata', barua: 'Barua' };
 
 export function blankData() {
   return {
-    personal: { fullName: '', title: '', phone: '', email: '', address: '', summary: '', photo: '' },
-    education: [{ school: '', qualification: '', start: '', end: '' }],
+    personal: { fullName: '', title: '', phone: '', email: '', address: '', summary: '', photo: '',
+      dob: '', pob: '', sex: '', nationality: '', languages: '' },
+    education: [{ school: '', qualification: '', start: '', end: '', major: '', gpa: '', awarded: '' }],
     experience: [{ employer: '', role: '', start: '', end: '', bullets: '' }],
     skills: '',
+    competencesTech: '',
+    competencesBehavior: '',
+    strengths: '',
     projects: [{ name: '', desc: '' }],
-    referees: [{ name: '', title: '', phone: '' }, { name: '', title: '', phone: '' }],
+    referees: [{ name: '', title: '', phone: '', org: '', address: '', email: '' }, { name: '', title: '', phone: '', org: '', address: '', email: '' }],
   };
 }
 
@@ -829,6 +842,8 @@ export function cvThemedHTML(data, theme, template, opts = {}) {
   const size = (theme && theme.size) || '13px';
   const st = (s) => ` style="${s}"`;
   if (template === 'exact') return cvExactExport(data, { accent, font, size });
+  if (template === 'traditional') return cvTraditionalHTML(data, { accent, font, size });
+  if (template === 'biodata') return cvBiodataHTML(data, { accent, font, size });
   let h = cvToHTML(data);
   const headExtra = template === 'banking'
     ? 'background:#262626;color:#ffffff;padding:12px 14px;margin-bottom:12px;'
@@ -848,6 +863,110 @@ export function cvThemedHTML(data, theme, template, opts = {}) {
   h = h.split('<td class="cv-h-left">').join(`<td${st('border:0;padding:0 12px 0 0;vertical-align:bottom;text-align:left;')}>`);
   h = h.split('<td class="cv-dates">').join(`<td${st('border:0;padding:0;vertical-align:bottom;text-align:right;white-space:nowrap;font-weight:400;color:#737373;font-size:12px;')}>`);
   return `<div${st(`font-family:${font};font-size:${size};color:#262626;line-height:1.55;`)}>${h}</div>`;
+}
+
+// Traditional formal: centered header, biodata profile, stacked academic
+// qualifications, numbered referees, declaration. All styles inline so the
+// card preview and the PDF render identically with no stylesheet.
+export function cvTraditionalHTML(data, t) {
+  const p = data.personal || {};
+  const st = (s) => ` style="${s}"`;
+  const head = `<div${st('text-align:center;margin-bottom:10px;')}>`
+    + `<div${st(`font-size:22px;font-weight:700;color:${t.accent};margin:0;`)}>${esc(p.fullName) || 'Your Name'}</div>`
+    + [p.address, [p.phone, p.email].filter(Boolean).join(' / ')].filter(Boolean)
+      .map((c) => `<div${st('font-size:12px;color:#737373;')}>${esc(c)}</div>`).join('')
+    + `</div>`;
+  const bio = [
+    ['Place of Birth', p.pob], ['Date of Birth', p.dob], ['Sex', p.sex],
+    ['Nationality', p.nationality], ['Languages', p.languages || data.languages],
+  ].filter(([, v]) => String(v || '').trim());
+  const secH = (txt) => `<div${st(`text-align:center;font-size:13px;font-weight:700;color:${t.accent};margin:14px 0 8px;`)}>${txt}</div>`;
+  const edu = (data.education || []).filter((e) => e.school || e.qualification);
+  const exp = (data.experience || []).filter((e) => e.role || e.employer);
+  const skills = String(data.skills || '').split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+  const refs = (data.referees || []).filter((r) => r.name);
+  return `<div${st(`font-family:${t.font};font-size:${t.size};color:#262626;line-height:1.55;`)}>${head}`
+    + (bio.length ? secH('Personal Profile') + bio.map(([k, v]) =>
+      `<div${st('font-size:12px;margin-bottom:2px;')}><span${st('font-weight:700;')}>${k}:</span> ${esc(v)}</div>`).join('') : '')
+    + (edu.length ? secH('Academic Qualifications') + edu.map((e) =>
+      `<div${st('margin-bottom:10px;')}><div${st('font-size:13px;font-weight:700;')}>${esc(e.qualification)}</div>`
+      + (e.school ? `<div${st('font-size:12px;')}>${esc(e.school)}</div>` : '')
+      + ([e.start, e.end].filter(Boolean).join(' - ') ? `<div${st('font-size:12px;color:#737373;')}>${esc([e.start, e.end].filter(Boolean).join(' - '))}</div>` : '')
+      + (e.major ? `<div${st('font-size:12px;')}>Major: ${esc(e.major)}</div>` : '')
+      + ([e.awarded, e.gpa].filter(Boolean).length
+        ? `<div${st('font-size:12px;')}>${esc([e.awarded, e.gpa ? `(GPA ${e.gpa})` : ''].filter(Boolean).join(' '))}</div>` : '')
+      + `</div>`).join('') : '')
+    + (skills.length ? secH('Skills and Competencies') + `<ul${st('margin:2px 0 0 18px;padding:0;font-size:12px;')}>`
+      + skills.map((s) => `<li>${esc(s)}</li>`).join('') + `</ul>` : '')
+    + (exp.length ? secH('Work Experience') + exp.map((e) =>
+      `<div${st('margin-bottom:10px;')}><div${st('font-size:13px;font-weight:700;')}>${esc(e.role)}${e.employer ? ` — ${esc(e.employer)}` : ''}</div>`
+      + ([e.start, e.end].filter(Boolean).join(' - ') ? `<div${st('font-size:12px;color:#737373;')}>${esc([e.start, e.end].filter(Boolean).join(' - '))}</div>` : '')
+      + (String(e.bullets || '').trim() ? `<ul${st('margin:2px 0 0 18px;padding:0;font-size:12px;')}>`
+        + String(e.bullets).split('\n').map((b) => b.trim()).filter(Boolean).map((b) => `<li>${esc(b)}</li>`).join('') + `</ul>` : '')
+      + `</div>`).join('') : '')
+    + (p.summary ? secH('Career Objective') + `<div${st('font-size:12px;')}>${esc(p.summary)}</div>` : '')
+    + (refs.length ? secH('Referees') + refs.map((r, i) =>
+      `<div${st('margin-bottom:8px;font-size:12px;')}><div${st('font-weight:700;')}>${i + 1}. ${esc(r.name)}</div>`
+      + [r.title && r.org ? `${r.title}, ${r.org}` : (r.title || r.org),
+        r.address, [r.phone, r.email].filter(Boolean).join(' / ')]
+        .filter(Boolean).map((c) => `<div>${esc(c)}</div>`).join('') + `</div>`).join('') : '')
+    + secH('Declaration')
+    + `<div${st('font-size:12px;')}>I, ${esc(p.fullName || '________________')}, certify that the information provided in this resume (curriculum vitae) is true and accurate to the best of my knowledge.</div>`
+    + `</div>`;
+}
+
+// Biodata formal: CURRICULUM VITAE title, colon-separated biodata, split
+// competences, academic record table, strengths, numbered referees,
+// declaration. All styles inline, like cvTraditionalHTML above.
+export function cvBiodataHTML(data, t) {
+  const p = data.personal || {};
+  const st = (s) => ` style="${s}"`;
+  const secH = (txt) => `<div${st(`font-size:13px;font-weight:700;color:${t.accent};margin:14px 0 8px;`)}>${txt}</div>`;
+  const bio = [
+    ['Name', p.fullName], ['Sex', p.sex], ['Date of birth', p.dob],
+    ['Nationality', p.nationality], ['Language', p.languages],
+    ['Address', p.address], ['Contact', p.phone], ['Email', p.email],
+  ].filter(([, v]) => String(v || '').trim());
+  const li = (arr) => `<ul${st('margin:2px 0 0 18px;padding:0;font-size:12px;')}>`
+    + arr.map((x) => `<li>${esc(x)}</li>`).join('') + `</ul>`;
+  const lines = (v) => String(v || '').split('\n').map((x) => x.trim()).filter(Boolean);
+  const compTech = lines(data.competencesTech);
+  const compBeh = lines(data.competencesBehavior);
+  const edu = (data.education || []).filter((e) => e.school || e.qualification);
+  const exp = (data.experience || []).filter((e) => e.role || e.employer);
+  const strengths = lines(data.strengths);
+  const refs = (data.referees || []).filter((r) => r.name);
+  return `<div${st(`font-family:${t.font};font-size:${t.size};color:#262626;line-height:1.55;`)}>`
+    + `<div${st(`text-align:center;font-size:20px;font-weight:700;color:${t.accent};margin-bottom:10px;`)}>CURRICULUM VITAE</div>`
+    + (bio.length ? secH('PERSONAL BIODATA') + `<table${st('width:100%;border-collapse:collapse;border:0;font-size:12px;')}>`
+      + bio.map(([k, v]) => `<tr><td${st('border:0;padding:1px 10px 1px 0;vertical-align:top;white-space:nowrap;font-weight:700;')}>${k}</td>`
+        + `<td${st('border:0;padding:1px 0;vertical-align:top;')}>: ${esc(v)}</td></tr>`).join('') + `</table>` : '')
+    + ((compTech.length || compBeh.length) ? secH('COMPETENCES')
+      + (compTech.length ? `<div${st('font-size:12px;font-weight:700;margin:6px 0 2px;')}>Technical Competence;</div>` + li(compTech) : '')
+      + (compBeh.length ? `<div${st('font-size:12px;font-weight:700;margin:6px 0 2px;')}>Behavioral Competence;</div>` + li(compBeh) : '') : '')
+    + (edu.length ? secH('ACADEMIC PROFILE')
+      + `<table${st('width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;')}>`
+      + `<tr><td${st('font-weight:700;border:0;padding:2px 8px 4px 0;')}>Institute/College</td>`
+      + `<td${st('font-weight:700;border:0;padding:2px 8px 4px 0;')}>Duration</td>`
+      + `<td${st('font-weight:700;border:0;padding:2px 0 4px 0;')}>Award</td></tr>`
+      + edu.map((e) => `<tr><td${st('border:0;padding:2px 8px 2px 0;vertical-align:top;')}>${esc(e.school)}${e.major ? `<br>${esc(e.major)}` : ''}</td>`
+        + `<td${st('border:0;padding:2px 8px 2px 0;vertical-align:top;white-space:nowrap;')}>${esc([e.start, e.end].filter(Boolean).join('-'))}</td>`
+        + `<td${st('border:0;padding:2px 0;vertical-align:top;')}>${esc([e.qualification, e.gpa ? `(GPA ${e.gpa})` : '', e.awarded].filter(Boolean).join(' — '))}</td></tr>`).join('')
+      + `</table>` : '')
+    + (exp.length ? secH('EXPERIENCE') + exp.map((e) =>
+      `<div${st('margin-bottom:10px;')}><div${st('font-size:13px;font-weight:700;')}>${esc(e.role)}${e.employer ? ` — ${esc(e.employer)}` : ''}</div>`
+      + ([e.start, e.end].filter(Boolean).join(' - ') ? `<div${st('font-size:12px;color:#737373;')}>${esc([e.start, e.end].filter(Boolean).join(' - '))}</div>` : '')
+      + (String(e.bullets || '').trim() ? li(String(e.bullets).split('\n').map((b) => b.trim()).filter(Boolean)) : '')
+      + `</div>`).join('') : '')
+    + (strengths.length ? secH('PROFESSIONAL STRENGTHS') + li(strengths) : '')
+    + (refs.length ? secH('REFEREES') + refs.map((r, i) =>
+      `<div${st('margin-bottom:8px;font-size:12px;')}><div${st('font-weight:700;')}>${i + 1}. ${esc(r.name)}</div>`
+      + [r.title && r.org ? `${r.title}, ${r.org}` : (r.title || r.org),
+        r.address, [r.phone, r.email].filter(Boolean).join(' / ')]
+        .filter(Boolean).map((c) => `<div>${esc(c)}</div>`).join('') + `</div>`).join('') : '')
+    + secH('DECLARATION')
+    + `<div${st('font-size:12px;')}>I, ${esc(p.fullName || '________________')}, hereby certify that to the best of my knowledge and belief, this CV correctly describes myself, my qualifications, and my experience.</div>`
+    + `</div>`;
 }
 
 // Exact replica pro layout: fixed photo rail (photo,
@@ -977,6 +1096,32 @@ export const SAMPLE_CV = {
     { name: 'Mr. Baraka Mziray', title: 'Supervisor, Vodacom Tanzania', phone: '+255713456789' },
   ],
 };
+
+// Amina Juma with the biodata the traditional templates need. Shared by the
+// Traditional/Biodata card previews, fresh-CV prefill and tests, so all three
+// show the same content.
+function sampleBiodata() {
+  const base = JSON.parse(JSON.stringify(SAMPLE_CV));
+  base.personal.dob = '12/03/2001';
+  base.personal.pob = 'Dar es Salaam';
+  base.personal.sex = 'Female';
+  base.personal.nationality = 'Tanzanian';
+  base.personal.languages = 'Kiswahili & English';
+  base.education[0].major = 'Computer Science';
+  base.education[0].gpa = '3.8';
+  base.education[0].awarded = 'November 2023';
+  base.competencesTech = 'Troubleshooting\nNetwork setup';
+  base.competencesBehavior = 'Teamwork\nCommunication';
+  base.strengths = 'Quick learner, hardworking and ready to contribute from day one.';
+  base.referees[0].org = 'University of Dar es Salaam';
+  base.referees[1].org = 'Vodacom Tanzania';
+  base.referees[1].address = 'Ubungo, Dar es Salaam';
+  base.referees[1].email = 'baraka.mziray@example.com';
+  return base;
+}
+
+export const SAMPLE_TRADITIONAL = sampleBiodata();
+export const SAMPLE_BIODATA = sampleBiodata();
 
 // ---- application letter renderer (Barua) ----
 // Letter layout follows the Tanzanian formal-letter flow: a right-aligned

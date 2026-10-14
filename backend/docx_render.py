@@ -286,7 +286,8 @@ def badge_png(initials: str, accent_hex: str, px: int = 440) -> bytes:
 # --------------------------------------------------------------------------
 # renderer
 # --------------------------------------------------------------------------
-FLOW_TEMPLATES = ("graduate", "government", "banking", "general", "clinical", "exact")
+FLOW_TEMPLATES = ("graduate", "government", "banking", "general", "clinical", "exact",
+                  "traditional", "biodata")
 
 
 class DocxRenderer:
@@ -294,8 +295,9 @@ class DocxRenderer:
         self.d = data or {}
         self.tpl = template if template in FLOW_TEMPLATES else "graduate"
         theme = theme or {}
-        deep = self.tpl in ("clinical", "exact")
-        self.accent = norm_hex(theme.get("color"), DEEP_ACCENT if deep else DEFAULT_ACCENT)
+        self.accent = norm_hex(theme.get("color"), {"clinical": DEEP_ACCENT,
+            "exact": DEEP_ACCENT, "biodata": DEEP_ACCENT,
+            "traditional": "171717"}.get(self.tpl, DEFAULT_ACCENT))
         self.size = self._size_of(theme.get("size"))
         self.doc = Document()
         self._target = self.doc          # swaps to a _Cell when rendering a rail
@@ -511,6 +513,10 @@ class DocxRenderer:
         elif self.tpl == "banking":
             self.header_blocked()
             self._sections()
+        elif self.tpl == "traditional":
+            self._build_traditional()
+        elif self.tpl == "biodata":
+            self._build_biodata()
         else:
             self.header_plain()
             self._sections()
@@ -652,6 +658,171 @@ class DocxRenderer:
                 self._target, self.avail = cell, col_mm - 6.0
                 self._sections(only=set(cell_kinds))
         self._target, self.avail = prev, prev_avail
+
+    # -- shared: numbered formal referee (traditional + biodata) ------------
+    def _referee_formal(self, r: dict, i: int) -> None:
+        p = self.para(space_before=1, space_after=0)
+        style_run(p.add_run(f"{i + 1}. {plain(r.get('name'))}"), BODY_FONT, self.size, True, GRAY_900)
+        title_org = " — ".join(x for x in (plain(r.get("title")), plain(r.get("org"))) if x)
+        contact = " / ".join(x for x in (plain(r.get("phone")), plain(r.get("email"))) if x)
+        for line in [title_org, plain(r.get("address")), contact]:
+            if line:
+                self.text(line, space_after=0)
+
+    # -- traditional: centered header, biodata, stacked academics ------------
+    def _build_traditional(self) -> None:
+        d = self.d
+        p = d.get("personal") or {}
+        name = plain(p.get("fullName")) or "Your Name"
+        self.text(name, size=self.size * 1.7, bold=True, color=self.accent,
+                  align=WD_ALIGN_PARAGRAPH.CENTER, space_after=1)
+        for line in [plain(p.get("address")),
+                     " / ".join(x for x in (plain(p.get("phone")), plain(p.get("email"))) if x)]:
+            if line:
+                self.text(line, size=self.size * 0.92, color=GRAY_500,
+                          align=WD_ALIGN_PARAGRAPH.CENTER, space_after=1)
+        bio = [("Place of Birth", p.get("pob")), ("Date of Birth", p.get("dob")),
+               ("Sex", p.get("sex")), ("Nationality", p.get("nationality")),
+               ("Languages", p.get("languages") or d.get("languages"))]
+        if any(plain(v) for _, v in bio):
+            self.heading("Personal Profile")
+            for k, v in bio:
+                if not plain(v):
+                    continue
+                bp = self.para(space_before=0, space_after=1)
+                style_run(bp.add_run(f"{k}: "), BODY_FONT, self.size, True, GRAY_900)
+                style_run(bp.add_run(plain(v)), BODY_FONT, self.size, False, GRAY_900)
+        edu = [e for e in (d.get("education") or [])
+               if plain(e.get("school")) or plain(e.get("qualification"))]
+        if edu:
+            self.heading("Academic Qualifications")
+            for e in edu:
+                if plain(e.get("qualification")):
+                    self.text(e.get("qualification"), bold=True, space_after=0)
+                if plain(e.get("school")):
+                    self.text(e.get("school"), space_after=0)
+                dates = date_span(e.get("start"), e.get("end"))
+                if dates:
+                    self.text(dates, size=self.size * 0.9, color=GRAY_500, space_after=0)
+                if plain(e.get("major")):
+                    self.text(f"Major: {plain(e.get('major'))}", space_after=0)
+                extra = " ".join(x for x in
+                                 (plain(e.get("awarded")),
+                                  f"(GPA {plain(e.get('gpa'))})" if plain(e.get("gpa")) else "") if x)
+                if extra:
+                    self.text(extra, space_after=2)
+        if split_lines(d.get("skills")):
+            self.heading("Skills and Competencies")
+            self.bullets(d.get("skills"))
+        exp = [e for e in (d.get("experience") or [])
+               if plain(e.get("role")) or plain(e.get("employer"))]
+        if exp:
+            self.heading("Work Experience")
+            for e in exp:
+                self.item_head(join_dash(e.get("role"), e.get("employer")),
+                               date_span(e.get("start"), e.get("end")))
+                self.bullets(e.get("bullets"))
+        if plain(p.get("summary")):
+            self.heading("Career Objective")
+            self.body_text(p.get("summary"))
+        refs = [r for r in (d.get("referees") or []) if plain(r.get("name"))]
+        if refs:
+            self.heading("Referees")
+            for i, r in enumerate(refs):
+                self._referee_formal(r, i)
+        self.heading("Declaration")
+        self.body_text(
+            f"I, {plain(p.get('fullName')) or '________________'}, certify that the "
+            "information provided in this resume (curriculum vitae) is true and "
+            "accurate to the best of my knowledge.")
+
+    # -- biodata: title, colon biodata, competences, academic table -----------
+    def _build_biodata(self) -> None:
+        d = self.d
+        p = d.get("personal") or {}
+        self.text("CURRICULUM VITAE", size=self.size * 1.6, bold=True, color=self.accent,
+                  align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
+        bio = [("Name", p.get("fullName")), ("Sex", p.get("sex")),
+               ("Date of birth", p.get("dob")), ("Nationality", p.get("nationality")),
+               ("Language", p.get("languages")), ("Address", p.get("address")),
+               ("Contact", p.get("phone")), ("Email", p.get("email"))]
+        if any(plain(v) for _, v in bio):
+            self.heading("PERSONAL BIODATA")
+            t = self.table(1, 2, [self.avail * 0.32, self.avail * 0.68])
+            # One row per field would balloon the table; stacked lines in a
+            # single cell pair keeps it to one row.
+            lc, vc = t.rows[0].cells
+            for cell in (lc, vc):
+                cell_width(cell, self.avail * 0.32 if cell is lc else self.avail * 0.68)
+                cell_borders(cell)
+            for k, v in bio:
+                if not plain(v):
+                    continue
+                lp = self.cell_para(lc, space_after=1)
+                style_run(lp.add_run(k), BODY_FONT, self.size, True, GRAY_900)
+                vp = self.cell_para(vc, space_after=1)
+                style_run(vp.add_run(f": {plain(v)}"), BODY_FONT, self.size, False, GRAY_900)
+            self.spacer()
+        for key, sub in (("competencesTech", "Technical Competence;"),
+                         ("competencesBehavior", "Behavioral Competence;")):
+            lines = split_lines(d.get(key))
+            if not lines:
+                continue
+            if key == "competencesTech":
+                self.heading("COMPETENCES")
+            self.text(sub, bold=True, space_after=1)
+            self.bullets(d.get(key))
+        edu = [e for e in (d.get("education") or [])
+               if plain(e.get("school")) or plain(e.get("qualification"))]
+        if edu:
+            self.heading("ACADEMIC PROFILE")
+            t = self.table(1, 3, [self.avail * 0.50, self.avail * 0.20, self.avail * 0.30])
+            for cell, mm in zip(t.rows[0].cells,
+                                [self.avail * 0.50, self.avail * 0.20, self.avail * 0.30]):
+                cell_width(cell, mm)
+                cell_borders(cell)
+            for cell, head in zip(t.rows[0].cells,
+                                  ["Institute/College", "Duration", "Award"]):
+                hp = self.cell_para(cell, space_after=1)
+                style_run(hp.add_run(head), BODY_FONT, self.size, True, GRAY_900)
+            for e in edu:
+                row = t.add_row().cells
+                vals = [plain(e.get("school")) +
+                        (f"\n{plain(e.get('major'))}" if plain(e.get("major")) else ""),
+                        date_span(e.get("start"), e.get("end")).replace(" – ", "-"),
+                        " — ".join(x for x in
+                                   (plain(e.get("qualification")),
+                                    f"(GPA {plain(e.get('gpa'))})" if plain(e.get("gpa")) else "",
+                                    plain(e.get("awarded"))) if x)]
+                for cell, val in zip(row, vals):
+                    cell_width(cell, self.avail * 0.50 if cell is row[0]
+                               else (self.avail * 0.20 if cell is row[1] else self.avail * 0.30))
+                    cell_borders(cell)
+                    cp = self.cell_para(cell, space_after=1)
+                    style_run(cp.add_run(val), BODY_FONT, self.size, False, GRAY_900)
+            self.spacer()
+        exp = [e for e in (d.get("experience") or [])
+               if plain(e.get("role")) or plain(e.get("employer"))]
+        if exp:
+            self.heading("EXPERIENCE")
+            for e in exp:
+                self.item_head(join_dash(e.get("role"), e.get("employer")),
+                               date_span(e.get("start"), e.get("end")))
+                self.bullets(e.get("bullets"))
+        strengths = split_lines(d.get("strengths"))
+        if strengths:
+            self.heading("PROFESSIONAL STRENGTHS")
+            self.bullets(d.get("strengths"))
+        refs = [r for r in (d.get("referees") or []) if plain(r.get("name"))]
+        if refs:
+            self.heading("REFEREES")
+            for i, r in enumerate(refs):
+                self._referee_formal(r, i)
+        self.heading("DECLARATION")
+        self.body_text(
+            f"I, {plain(p.get('fullName')) or '________________'}, hereby certify that to "
+            "the best of my knowledge and belief, this CV correctly describes myself, "
+            "my qualifications, and my experience.")
 
     # -- exact: fixed rail (photo/contact/skills) + main column ------------
     def _build_exact(self) -> None:

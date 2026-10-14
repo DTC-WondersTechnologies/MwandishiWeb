@@ -2,8 +2,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLang } from '../context.jsx';
 import { useStore } from '../hooks.js';
-import { deleteCV, duplicateCV, fmtDate, updateCV, exportPayloadFor, shareCVWhatsApp, PRO_TEMPLATES, hasTemplateUnlocked } from '../lib/store.js';
+import { deleteCV, duplicateCV, deleteLetter, fmtDate, updateCV, exportPayloadFor, shareCVWhatsApp, PRO_TEMPLATES, hasTemplateUnlocked } from '../lib/store.js';
 import PaywallModal from '../components/PaywallModal.jsx';
+import { SoonModal } from '../components/Modal.jsx';
 
 function templateName(slug) {
   return { graduate: 'Graduate', government: 'Govt/NGO', banking: 'Banking', general: 'General', clinical: 'Clinical', exact: 'Exact Replica', barua: 'Barua' }[slug] || slug;
@@ -23,6 +24,7 @@ export default function Dashboard() {
   // stacking up exports and downloads.
   const [sharing, setSharing] = React.useState('');
   const [paywallTemplate, setPaywallTemplate] = React.useState(null);
+  const [soonOpen, setSoonOpen] = React.useState(false);
   const steps = [
     { done: cvs.length > 0, text: t('idx.s1') },
     { done: letters.length > 0, text: t('idx.s2') },
@@ -51,6 +53,11 @@ export default function Dashboard() {
   const del = (id) => {
     if (!window.confirm(t('idx.delConfirm'))) return;
     deleteCV(id);
+    refresh();
+  };
+  const delLetter = (id) => {
+    if (!window.confirm(t('ltr.delConfirm'))) return;
+    deleteLetter(id);
     refresh();
   };
   const dup = (id) => { duplicateCV(id); refresh(); };
@@ -136,6 +143,7 @@ export default function Dashboard() {
               <Link to="/new-cv" className="btn btn-primary"><i className="ti ti-plus"></i> <span>{t('idx.startNew')}</span></Link>
               <Link to="/templates" className="btn btn-outline-secondary"><i className="ti ti-layout-grid"></i> <span>{t('idx.browse')}</span></Link>
               <Link to="/cover-letters" className="btn btn-outline-secondary"><i className="ti ti-mail"></i> <span>{t('idx.writeLetter')}</span></Link>
+              <button className="btn btn-outline-secondary text-start" onClick={() => setSoonOpen(true)}><i className="ti ti-upload"></i> <span>{t('nav.upload')}</span> <span className="badge bg-light text-secondary border ms-auto">{t('nav.soon')}</span></button>
             </div>
           </div>
           <div className="card">
@@ -153,6 +161,43 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      <div className="row g-3 mb-3">
+        <div className="col-12">
+          <div className="card h-100">
+            <div className="card-header bg-white d-flex justify-content-between align-items-center px-4 py-3">
+              <h4 className="mb-0 h5">{t('idx.letters')}</h4>
+              <div className="d-flex gap-2">
+                <Link to="/cover-letters" className="btn btn-sm btn-outline-secondary"><span>{t('idx.viewAll')}</span></Link>
+                <Link to="/cover-letters" className="btn btn-sm btn-primary"><i className="ti ti-plus"></i> <span>{t('idx.writeLetter')}</span></Link>
+              </div>
+            </div>
+            <div className="list-group list-group-flush">
+              {letters.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-secondary small mb-0">{t('ltr.nolettersSub')}</p>
+                </div>
+              ) : letters.slice(0, 3).map((l) => (
+                <div className="list-group-item p-3 d-flex flex-column flex-md-row gap-3 align-items-md-center" key={l.id}>
+                  <div className="icon-shape icon-md bg-info bg-opacity-10 text-info rounded-2 flex-shrink-0">
+                    <i className="ti ti-mail fs-4"></i>
+                  </div>
+                  <div className="flex-grow-1">
+                    <div className="d-flex flex-wrap align-items-center gap-2">
+                      <strong>{l.jobTitle} — {l.company}</strong>
+                      <span className="badge bg-light text-secondary border">{l.lang}</span>
+                    </div>
+                    <small className="text-secondary">Updated {fmtDate(l.updatedAt)}</small>
+                  </div>
+                  <div className="d-flex gap-1 flex-shrink-0">
+                    <Link to="/cover-letters" className="btn btn-sm btn-outline-primary" title="Open"><i className="ti ti-edit"></i></Link>
+                    <button className="btn btn-sm btn-outline-danger" onClick={() => delLetter(l.id)} title="Delete"><i className="ti ti-trash"></i></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
       <PaywallModal
         open={Boolean(paywallTemplate)}
         template={paywallTemplate}
@@ -162,6 +207,7 @@ export default function Dashboard() {
           refresh();
         }}
       />
+      <SoonModal open={soonOpen} onClose={() => setSoonOpen(false)} t={t} />
     </React.Fragment>
   );
 }
