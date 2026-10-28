@@ -8,7 +8,7 @@ import {
   cvTraditionalHTML, cvBiodataHTML,
   normalizeTZPhone, parseLevel, withExportPatch,
   FONTS, SIZES, TPL_DEFAULTS, exportCSS, shareCVWhatsApp, SAMPLE_CV, SAMPLE_EXACT, SAMPLE_TRADITIONAL, SAMPLE_BIODATA, cvDataFor,
-  PRO_TEMPLATES, hasTemplateUnlocked,
+  PRO_TEMPLATES, hasTemplateUnlocked, PAYMENTS_ENABLED,
 } from '../lib/store.js';
 import Modal from '../components/Modal.jsx';
 import PaywallModal from '../components/PaywallModal.jsx';
@@ -450,7 +450,7 @@ export default function Builder({ initialMode }) {
     return { html, css: exact ? '' : currentExportCSS() };
   };
   const doPrint = async () => {
-    if (PRO_TEMPLATES.includes(template) && !hasTemplateUnlocked(template)) {
+    if (PAYMENTS_ENABLED && PRO_TEMPLATES.includes(template) && !hasTemplateUnlocked(template)) {
       setPaywallOpen(true);
       return;
     }
@@ -465,7 +465,7 @@ export default function Builder({ initialMode }) {
     });
   };
   const doDoc = async () => {
-    if (PRO_TEMPLATES.includes(template) && !hasTemplateUnlocked(template)) {
+    if (PAYMENTS_ENABLED && PRO_TEMPLATES.includes(template) && !hasTemplateUnlocked(template)) {
       setPaywallOpen(true);
       return;
     }
@@ -499,7 +499,7 @@ export default function Builder({ initialMode }) {
      one it falls back to. */
   const doWa = async (e) => {
     e.preventDefault();
-    if (PRO_TEMPLATES.includes(template) && !hasTemplateUnlocked(template)) {
+    if (PAYMENTS_ENABLED && PRO_TEMPLATES.includes(template) && !hasTemplateUnlocked(template)) {
       setPaywallOpen(true);
       return;
     }
@@ -708,7 +708,7 @@ export default function Builder({ initialMode }) {
                         }}
                       >
                         {label}
-                        {isPro && !isUnlocked && <span className="badge bg-warning text-dark ms-1" style={{ fontSize: '0.62rem' }}>PRO</span>}
+                        {PAYMENTS_ENABLED && isPro && !isUnlocked && <span className="badge bg-warning text-dark ms-1" style={{ fontSize: '0.62rem' }}>PRO</span>}
                       </button>
                     );
                   })}
@@ -928,7 +928,7 @@ export default function Builder({ initialMode }) {
         </div>
       </div>
       <PaywallModal
-        open={paywallOpen}
+        open={PAYMENTS_ENABLED && paywallOpen}
         template={{ slug: template, name: TEMPLATE_LABELS[template] || template }}
         onClose={() => setPaywallOpen(false)}
         onUnlocked={() => {

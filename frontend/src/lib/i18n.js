@@ -387,7 +387,14 @@ const EN = {
   'pr.trustTitle': 'Tanzanian Mobile Money Assurance',
   'pr.trustSub': 'Engineered for Tanzanian ground reality: 0 TZS customer surcharge, instant USSD push, and 100% privacy.',
   'pr.trustFeeTitle': '0 TZS Customer Transaction Fee',
+  'pr.soonBanner': 'Pro template payments are coming soon — all templates are free to use for now.',
+  'pr.soonBtn': 'Coming soon',
+  'pr.soonTrust': 'Pro template payments are coming soon. Until then, all templates are free to use on this device.',
+  'pr.a1': 'Mobile money payments for Pro templates are coming soon. Until then, both specialist templates are free to use.',
+  'pr.a3': 'Pro template payments are coming soon. When they launch, unlocks will be tied to your device ID and payment reference.',
+
   'pr.trustFeeDesc': 'When you pay 1,500 TZS or 2,000 TZS, exactly that amount is deducted from your mobile wallet. We cover all Snippe Pay processing charges.',
+
   'pr.trustUssdTitle': 'Instant USSD Push Notification',
   'pr.trustUssdDesc': 'Enter your phone number and an instant prompt appears on your screen. Enter your secret PIN to confirm — no merchant codes or paybills.',
   'pr.trustPrivacyTitle': 'Device-Anchored & Private',
@@ -899,7 +906,14 @@ const SW = {
   'pr.trustTitle': 'Uhakika wa Malipo ya Simu Tanzania',
   'pr.trustSub': 'Imejengwa kulingana na mazingira halisi ya Tanzania: 0 TZS makato ya ziada, ujumbe wa USSD papo hapo, na faragha kamili.',
   'pr.trustFeeTitle': '0 TZS Ada ya Mtandao kwa Mteja',
+  'pr.soonBanner': 'Malipo ya violezo vya Pro yanakuja hivi karibuni — violezo vyote vinatumiwa bure kwa sasa.',
+  'pr.soonBtn': 'Inakuja hivi karibuni',
+  'pr.soonTrust': 'Malipo ya violezo vya Pro yanakuja hivi karibuni. Mpaka wakati huo, violezo vyote vinatumiwa bure kwenye kifaa hiki.',
+  'pr.a1': 'Malipo ya simu ya mkononi kwa violezo vya Pro yanakuja hivi karibuni. Mpaka wakati huo, violezo vyote vya kitaalamu vinatumiwa bure.',
+  'pr.a3': 'Malipo ya violezo vya Pro yanakuja hivi karibuni. Yatakapowashwa, ufunguzi utahusishwa na kitambulisho cha kifaa chako na marejeleo ya malipo.',
+
   'pr.trustFeeDesc': 'Unapolipa TZS 1,500 au TZS 2,000, kiasi hicho halisi ndicho kinachokatwa kwenye salio lako. Mwandishi inagharamia makato yote ya mfumo wa Snippe Pay.',
+
   'pr.trustUssdTitle': 'Ujumbe wa Papo Hapo wa USSD',
   'pr.trustUssdDesc': 'Weka namba ya simu na utapokea ujumbe kwenye skrini ya simu yako papo hapo. Weka PIN yako ya siri — hakuna namba za kampuni au paybill.',
   'pr.trustPrivacyTitle': 'Imehifadhiwa Kwenye Kifaa & Faragha Kamili',

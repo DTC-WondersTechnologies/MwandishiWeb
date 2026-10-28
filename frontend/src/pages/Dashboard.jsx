@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLang } from '../context.jsx';
 import { useStore } from '../hooks.js';
-import { deleteCV, duplicateCV, deleteLetter, fmtDate, updateCV, exportPayloadFor, shareCVWhatsApp, PRO_TEMPLATES, hasTemplateUnlocked } from '../lib/store.js';
+import { deleteCV, duplicateCV, deleteLetter, fmtDate, updateCV, exportPayloadFor, shareCVWhatsApp, PRO_TEMPLATES, hasTemplateUnlocked, PAYMENTS_ENABLED } from '../lib/store.js';
 import PaywallModal from '../components/PaywallModal.jsx';
 import { SoonModal } from '../components/Modal.jsx';
 
@@ -32,7 +32,7 @@ export default function Dashboard() {
   ];
   const share = async (cv) => {
     if (sharing) return;
-    if (PRO_TEMPLATES.includes(cv.template) && !hasTemplateUnlocked(cv.template)) {
+    if (PAYMENTS_ENABLED && PRO_TEMPLATES.includes(cv.template) && !hasTemplateUnlocked(cv.template)) {
       setPaywallTemplate({ slug: cv.template, name: templateName(cv.template) });
       return;
     }
@@ -199,7 +199,7 @@ export default function Dashboard() {
         </div>
       </div>
       <PaywallModal
-        open={Boolean(paywallTemplate)}
+        open={PAYMENTS_ENABLED && Boolean(paywallTemplate)}
         template={paywallTemplate}
         onClose={() => setPaywallTemplate(null)}
         onUnlocked={() => {

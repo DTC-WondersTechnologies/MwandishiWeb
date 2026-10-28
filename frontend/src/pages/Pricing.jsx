@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useLang, useTheme } from '../context.jsx';
 import {
   TEMPLATES, PRO_TEMPLATES, PRICE_CLINICAL, PRICE_EXACT,
-  hasTemplateUnlocked,
+  hasTemplateUnlocked, PAYMENTS_ENABLED,
 } from '../lib/store.js';
 import { sheetFor } from '../components/TemplatePreview.jsx';
 import Modal from '../components/Modal.jsx';
@@ -52,6 +52,7 @@ export default function Pricing() {
       navigate(`/new-cv?template=${tpl.slug}`);
       return;
     }
+    if (!PAYMENTS_ENABLED) return;
     setPaywallTpl(tpl);
   };
 
@@ -122,6 +123,12 @@ export default function Pricing() {
               <p className="pricing-lead mx-auto mb-0">
                 {t('pr.sub')}
               </p>
+              {!PAYMENTS_ENABLED && (
+                <div className="alert alert-warning d-inline-flex align-items-center gap-2 mt-3 px-3 py-2 mx-auto">
+                  <i className="ti ti-clock"></i>
+                  <span>{t('pr.soonBanner')}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -218,13 +225,16 @@ export default function Pricing() {
                 <button
                   type="button"
                   onClick={() => handleUnlockOrUse(clinicalTpl)}
-                  className={`btn ${isClinicalUnlocked ? 'btn-outline-primary' : 'btn-primary'} pricing-btn w-100 d-flex align-items-center justify-content-center gap-2 shadow-xs`}
+                  className={`btn ${PAYMENTS_ENABLED && isClinicalUnlocked ? 'btn-outline-primary' : PAYMENTS_ENABLED ? 'btn-primary' : 'btn-outline-secondary'} pricing-btn w-100 d-flex align-items-center justify-content-center gap-2 shadow-xs`}
+                  disabled={!PAYMENTS_ENABLED}
                 >
-                  <i className={`ti ${isClinicalUnlocked ? 'ti-arrow-right' : 'ti-device-mobile'} fs-5`}></i>
+                  <i className={`ti ${PAYMENTS_ENABLED && isClinicalUnlocked ? 'ti-arrow-right' : PAYMENTS_ENABLED ? 'ti-device-mobile' : 'ti-clock'} fs-5`}></i>
                   <span>
-                    {isClinicalUnlocked
-                      ? t('pr.clinicalCtaUnlocked')
-                      : t('pr.clinicalCtaLocked')}
+                    {!PAYMENTS_ENABLED
+                      ? t('pr.soonBtn')
+                      : isClinicalUnlocked
+                        ? t('pr.clinicalCtaUnlocked')
+                        : t('pr.clinicalCtaLocked')}
                   </span>
                 </button>
                 <div className="d-flex justify-content-center align-items-center gap-2 mt-2">
@@ -304,13 +314,16 @@ export default function Pricing() {
                 <button
                   type="button"
                   onClick={() => handleUnlockOrUse(exactTpl)}
-                  className={`btn ${isExactUnlocked ? 'btn-outline-primary' : 'btn-primary'} pricing-btn w-100 d-flex align-items-center justify-content-center gap-2 shadow-sm`}
+                  className={`btn ${PAYMENTS_ENABLED && isExactUnlocked ? 'btn-outline-primary' : PAYMENTS_ENABLED ? 'btn-primary' : 'btn-outline-secondary'} pricing-btn w-100 d-flex align-items-center justify-content-center gap-2 shadow-sm`}
+                  disabled={!PAYMENTS_ENABLED}
                 >
-                  <i className={`ti ${isExactUnlocked ? 'ti-arrow-right' : 'ti-device-mobile'} fs-5`}></i>
+                  <i className={`ti ${PAYMENTS_ENABLED && isExactUnlocked ? 'ti-arrow-right' : PAYMENTS_ENABLED ? 'ti-device-mobile' : 'ti-clock'} fs-5`}></i>
                   <span>
-                    {isExactUnlocked
-                      ? t('pr.exactCtaUnlocked')
-                      : t('pr.exactCtaLocked')}
+                    {!PAYMENTS_ENABLED
+                      ? t('pr.soonBtn')
+                      : isExactUnlocked
+                        ? t('pr.exactCtaUnlocked')
+                        : t('pr.exactCtaLocked')}
                   </span>
                 </button>
                 <div className="d-flex justify-content-center align-items-center gap-2 mt-2">
@@ -465,42 +478,53 @@ export default function Pricing() {
                   </span>
                   <MobileMoneyRow size={28} compact={false} />
                   <div className="small text-muted mt-1" style={{ fontSize: '0.78rem' }}>
-                    {t('pr.trustFeeDesc')}
+                    {PAYMENTS_ENABLED ? t('pr.trustFeeDesc') : t('pr.soonTrust')}
                   </div>
                 </div>
               </div>
 
               <div className="col-12 col-lg-7">
                 <div className="row g-3">
-                  <div className="col-12 col-sm-4">
-                    <div className="d-flex align-items-start gap-2">
-                      <span className="step-bubble bg-primary text-white flex-shrink-0">1</span>
-                      <div>
-                        <strong className="d-block small">{t('pr.step1Title')}</strong>
-                        <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{t('pr.step1Desc')}</span>
+                  {PAYMENTS_ENABLED ? (
+                    <React.Fragment>
+                      <div className="col-12 col-sm-4">
+                        <div className="d-flex align-items-start gap-2">
+                          <span className="step-bubble bg-primary text-white flex-shrink-0">1</span>
+                          <div>
+                            <strong className="d-block small">{t('pr.step1Title')}</strong>
+                            <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{t('pr.step1Desc')}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="col-12 col-sm-4">
-                    <div className="d-flex align-items-start gap-2">
-                      <span className="step-bubble bg-primary text-white flex-shrink-0">2</span>
-                      <div>
-                        <strong className="d-block small">{t('pr.step2Title')}</strong>
-                        <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{t('pr.step2Desc')}</span>
+                      <div className="col-12 col-sm-4">
+                        <div className="d-flex align-items-start gap-2">
+                          <span className="step-bubble bg-primary text-white flex-shrink-0">2</span>
+                          <div>
+                            <strong className="d-block small">{t('pr.step2Title')}</strong>
+                            <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{t('pr.step2Desc')}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="col-12 col-sm-4">
-                    <div className="d-flex align-items-start gap-2">
-                      <span className="step-bubble bg-success text-white flex-shrink-0">3</span>
-                      <div>
-                        <strong className="d-block small">{t('pr.step3Title')}</strong>
-                        <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{t('pr.step3Desc')}</span>
+                      <div className="col-12 col-sm-4">
+                        <div className="d-flex align-items-start gap-2">
+                          <span className="step-bubble bg-success text-white flex-shrink-0">3</span>
+                          <div>
+                            <strong className="d-block small">{t('pr.step3Title')}</strong>
+                            <span className="text-secondary" style={{ fontSize: '0.75rem' }}>{t('pr.step3Desc')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  ) : (
+                    <div className="col-12">
+                      <div className="d-flex align-items-center gap-2 text-secondary">
+                        <i className="ti ti-clock"></i>
+                        <span className="small">{t('pr.soonTrust')}</span>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -597,7 +621,7 @@ export default function Pricing() {
       {/* ------------------------------------------------------------- Modals */}
       {/* 1. Paywall Checkout Modal */}
       <PaywallModal
-        open={Boolean(paywallTpl)}
+        open={PAYMENTS_ENABLED && Boolean(paywallTpl)}
         template={paywallTpl}
         onClose={() => setPaywallTpl(null)}
         onUnlocked={(slug) => {

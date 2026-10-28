@@ -1322,6 +1322,8 @@ export function letterPrompt({ name, jobTitle, company, manager, lang, ad, bg, k
 }
 
 // ---- mobile money payments & entitlements ----
+export const PAYMENTS_ENABLED = false;   // flip to true when Snippe is live
+
 export const PRICE_CLINICAL = 1500;
 export const PRICE_EXACT = 2000;
 export const PRO_TEMPLATES = ['clinical', 'exact'];
@@ -1364,6 +1366,7 @@ export function saveLocalEntitlement(item) {
 
 export function hasTemplateUnlocked(slug) {
   if (!PRO_TEMPLATES.includes(slug)) return true;
+  if (!PAYMENTS_ENABLED) return true;
   return getLocalEntitlements().includes(slug);
 }
 
@@ -1385,6 +1388,9 @@ export async function checkServerEntitlement(slug) {
 }
 
 export async function requestCheckout({ item, phone, amount }) {
+  if (!PAYMENTS_ENABLED) {
+    return { ok: false, error: 'Payments coming soon', comingSoon: true };
+  }
   const dynamicAmount = amount || (item === 'exact' ? PRICE_EXACT : PRICE_CLINICAL);
   const base = backendBase();
   if (!base) {

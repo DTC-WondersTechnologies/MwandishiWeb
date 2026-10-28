@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLang } from '../context.jsx';
-import { TEMPLATES, PRO_TEMPLATES, PRICE_CLINICAL, PRICE_EXACT, hasTemplateUnlocked } from '../lib/store.js';
+import { TEMPLATES, PRO_TEMPLATES, PRICE_CLINICAL, PRICE_EXACT, hasTemplateUnlocked, PAYMENTS_ENABLED } from '../lib/store.js';
 import Modal from '../components/Modal.jsx';
 import PaywallModal from '../components/PaywallModal.jsx';
 import TemplatePreview, { sheetFor, useLinkFor } from '../components/TemplatePreview.jsx';
@@ -37,7 +37,7 @@ export default function Templates() {
   const shown = TEMPLATES.filter((x) => filter === 'all' || x.cat === filter);
 
   const handleUse = (tpl) => {
-    if (PRO_TEMPLATES.includes(tpl.slug) && !hasTemplateUnlocked(tpl.slug)) {
+    if (PAYMENTS_ENABLED && PRO_TEMPLATES.includes(tpl.slug) && !hasTemplateUnlocked(tpl.slug)) {
       setPaywallTpl(tpl);
       return;
     }
@@ -74,6 +74,7 @@ export default function Templates() {
           const isPro = PRO_TEMPLATES.includes(tpl.slug);
           const unlocked = !isPro || hasTemplateUnlocked(tpl.slug);
           const price = tpl.slug === 'exact' ? PRICE_EXACT : PRICE_CLINICAL;
+          const showPaywall = PAYMENTS_ENABLED && isPro && !unlocked;
           return (
             <div className="col-12 col-md-6 col-lg-4" key={tpl.slug}>
               <div className="card h-100">
@@ -82,8 +83,8 @@ export default function Templates() {
                   <div className="d-flex align-items-center justify-content-between mb-1">
                     <h3 className="h6 mb-0">{tpl.name}</h3>
                     {isPro ? (
-                      <span className={`badge ${unlocked ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning-emphasis'} border`}>
-                        {unlocked ? t('pr.unlockedBadge') : `Pro · ${price.toLocaleString()} TZS`}
+                      <span className={`badge ${!PAYMENTS_ENABLED ? 'bg-info-subtle text-info-emphasis' : unlocked ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning-emphasis'} border`}>
+                        {!PAYMENTS_ENABLED ? t('pr.soonBtn') : unlocked ? t('pr.unlockedBadge') : `Pro · ${price.toLocaleString()} TZS`}
                       </span>
                     ) : null}
                   </div>
@@ -96,9 +97,9 @@ export default function Templates() {
                     <button
                       type="button"
                       onClick={() => handleUse(tpl)}
-                      className={`btn btn-sm flex-grow-1 ${isPro && !unlocked ? 'btn-warning' : 'btn-primary'}`}
+                      className={`btn btn-sm flex-grow-1 ${showPaywall ? 'btn-warning' : 'btn-primary'}`}
                     >
-                      {isPro && !unlocked ? (
+                      {showPaywall ? (
                         <span><i className="ti ti-lock me-1"></i>{t('tpl.use')} ({price.toLocaleString()} TZS)</span>
                       ) : (
                         t('tpl.use')
@@ -131,7 +132,7 @@ export default function Templates() {
       </Modal>
 
       <PaywallModal
-        open={!!paywallTpl}
+        open={PAYMENTS_ENABLED && !!paywallTpl}
         template={paywallTpl}
         onClose={() => setPaywallTpl(null)}
         onUnlocked={(slug) => {
